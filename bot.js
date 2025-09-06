@@ -14,6 +14,26 @@ const sql = postgres(DATABASE_URL, { ssl: "require" });
 // بوت
 const bot = new Telegraf(BOT_TOKEN);
 
+// ====== Debug env ======
+console.log("🆔 ADMIN_ID:", ADMIN_ID || "مفقود!");
+console.log("🤖 BOT_TOKEN:", BOT_TOKEN ? "موجود" : "مفقود!");
+console.log("🗄 DATABASE_URL:", DATABASE_URL ? "موجود" : "مفقود!");
+
+// ====== اتصال قاعدة البيانات ======
+async function connectDB() {
+  try {
+    await sql`SELECT 1`;
+    console.log("✅ bot.ts: اتصال قاعدة البيانات ناجح");
+  } catch (err) {
+    console.error("❌ bot.ts: فشل الاتصال:", err.message);
+    setTimeout(connectDB, 5000);
+  }
+}
+connectDB();
+
+// ====== مثال أمر للبوت ======
+bot.start((ctx) => ctx.reply("🚀 أهلاً! البوت شغال على Deno Deploy"));
+
 // Webhook
 serve(async (req) => {
   const url = new URL(req.url);
@@ -22,43 +42,6 @@ serve(async (req) => {
   }
   return new Response("OK");
 }, { port: PORT });
-
-
-// ====== Debug env ======
-console.log('🆔 ADMIN_ID:', process.env.ADMIN_ID || 'مفقود!');
-console.log('🤖 BOT_TOKEN:', process.env.BOT_TOKEN ? 'موجود' : 'مفقود!');
-console.log('🗄 DATABASE_URL:', process.env.DATABASE_URL ? 'موجود' : 'مفقود!');
-console.log('🎯 ADMIN_ID المحدد:', process.env.ADMIN_ID);
-
-const userSessions = {};
-
-// ====== Postgres Pool ======
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-async function connectDB() {
-  try {
-    await pool.query('SELECT 1'); // اختبار الاتصال
-    console.log('✅ bot.js: اتصال قاعدة البيانات ناجح');
-  } catch (err) {
-    console.error('❌ bot.js: فشل الاتصال:', err.message);
-    setTimeout(connectDB, 5000);
-  }
-}
-
-// ====== تحميل البوت من رابط واحد ======
-const BOT_SCRIPT_URL = process.env.BOT_SCRIPT_URL;
-async function loadBot() {
-  try {
-    const response = await axios.get(BOT_SCRIPT_URL);
-    eval(response.data);
-    console.log('🤖 Bot script loaded successfully!');
-  } catch (err) {
-    console.error('❌ Failed to load bot script:', err);
-  }
-}
 
 
 // 🔵 إنشاء/تحديث جميع الجداول عند الإقلاع

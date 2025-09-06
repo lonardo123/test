@@ -1,0 +1,15 @@
+{
+  "importMap": "./import_map.json",
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-read ./bot.ts"
+  },
+  "fmt": {
+    "useTabs": false,
+    "lineWidth": 80
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

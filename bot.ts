@@ -1,55 +1,46 @@
-import { Telegraf } from "npm:telegraf";
+// ==================== تحميل environment variables ====================
+import "https://deno.land/std@0.224.0/dotenv/load.ts"; 
+// هذا سيقرأ .env تلقائياً ويضع القيم في Deno.env
+
+// ==================== قراءة المتغيرات ====================
+const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
+const ADMIN_ID = Deno.env.get("ADMIN_ID");
+const DATABASE_URL = Deno.env.get("DATABASE_URL");
+const CALLBACK_SECRET = Deno.env.get("CALLBACK_SECRET");
+const MIN_WITHDRAW = parseFloat(Deno.env.get("MIN_WITHDRAW") || "0");
+
+// ==================== التحقق من المتغيرات المطلوبة ====================
+if (!BOT_TOKEN) throw new Error("❌ BOT_TOKEN missing");
+if (!ADMIN_ID) throw new Error("❌ ADMIN_ID missing");
+if (!DATABASE_URL) throw new Error("❌ DATABASE_URL missing");
+
+// ==================== استيراد مكتبات البوت ====================
+import { Telegraf, Markup } from "npm:telegraf";
 import postgres from "https://deno.land/x/postgresjs/mod.js";
-import { serve } from "https://deno.land/std/http/server.ts";
 
-// ====== متغيرات البيئة ======
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
-const DATABASE_URL = Deno.env.get("DATABASE_URL") ?? "";
-const ADMIN_ID = Deno.env.get("ADMIN_ID") ?? "";
-const WEBHOOK_URL = Deno.env.get("WEBHOOK_URL") ?? ""; 
-const PORT = Number(Deno.env.get("PORT") ?? 3000);
-
-// تحقق أولي
-if (!BOT_TOKEN) {
-  console.error("❌ BOT_TOKEN غير معرف! أضفه في Environment Variables");
-  throw new Error("BOT_TOKEN missing");
-}
-if (!DATABASE_URL) {
-  console.error("❌ DATABASE_URL غير معرف! أضفه في Environment Variables");
-  throw new Error("DATABASE_URL missing");
-}
-
-// ====== قاعدة البيانات ======
-const sql = postgres(DATABASE_URL, { ssl: "require" });
-
-// ====== تهيئة البوت ======
+// ==================== إنشاء البوت ====================
 const bot = new Telegraf(BOT_TOKEN);
 
-// ====== مثال أمر بسيط ======
-bot.start((ctx) => ctx.reply("🚀 أهلاً! البوت شغال على Deno Deploy"));
+// ==================== تهيئة قاعدة البيانات ====================
+const client = postgres(DATABASE_URL);
 
-// ====== Webhook ======
-serve(async (req) => {
-  const url = new URL(req.url);
-  if (url.pathname === "/webhook" && req.method === "POST") {
-    const body = await req.json();
-    await bot.handleUpdate(body);
-    return new Response("OK");
-  }
-  return new Response("Deno bot is running");
-}, { port: PORT });
+// ==================== مثال تشغيل البوت ====================
+bot.start((ctx) => ctx.reply("✅ البوت جاهز للعمل!"));
 
-// ====== دوال الاتصال والـ schema ======
-async function connectDB() {
-  try {
-    await sql`SELECT 1`;
-    console.log("✅ اتصال بقاعدة البيانات ناجح");
-  } catch (err) {
-    console.error("❌ فشل الاتصال بقاعدة البيانات:", err?.message ?? err);
-    // إعادة محاولة بعد 5 ثوانٍ
-    setTimeout(connectDB, 5000);
-  }
-}
+// ==================== تشغيل البوت ====================
+bot.launch();
+console.log("✅ البوت شُغّل بنجاح");
+
+// ==================== اغلاق الاتصال عند إيقاف البوت ====================
+process.once('SIGINT', () => {
+  bot.stop('SIGINT');
+  client.end().then(() => console.log('🗄️ Postgres connection closed.'));
+});
+process.once('SIGTERM', () => {
+  bot.stop('SIGTERM');
+  client.end().then(() => console.log('🗄️ Postgres connection closed.'));
+});
+
 
 // 🔵 إنشاء/تحديث جميع الجداول عند الإقلاع
 async function initSchema() {

@@ -1,47 +1,40 @@
-import { Telegraf, session, Markup } from "npm:telegraf";
-import axios from "npm:axios";
+import { Telegraf } from "npm:telegraf";
 import postgres from "https://deno.land/x/postgresjs/mod.js";
 import { serve } from "https://deno.land/std/http/server.ts";
 
-const BOT_TOKEN = Deno.env.get("BOT_TOKEN");
-const DATABASE_URL = Deno.env.get("DATABASE_URL");
-const ADMIN_ID = Deno.env.get("ADMIN_ID");
-const PORT = Number(Deno.env.get("PORT")) || 3000;
+// ====== متغيرات البيئة (اضفها من Dashboard في Deno Deploy) ======
+const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
+const DATABASE_URL = Deno.env.get("DATABASE_URL") ?? "";
+const ADMIN_ID = Deno.env.get("ADMIN_ID") ?? "";
+// اختياري: ضع هنا Preview URL أو اسم الدومين الكامل بدون المسار /webhook
+// مثال: https://your-project.deno.dev
+const WEBHOOK_URL = Deno.env.get("WEBHOOK_URL") ?? ""; 
+const PORT = Number(Deno.env.get("PORT") ?? 3000);
 
-// قاعدة البيانات
+// تحقق أولي من المتغيرات المهمة
+if (!BOT_TOKEN) {
+  console.error("❌ BOT_TOKEN غير معرف! أضفه في Environment Variables");
+  throw new Error("BOT_TOKEN missing");
+}
+if (!DATABASE_URL) {
+  console.error("❌ DATABASE_URL غير معرف! أضفه في Environment Variables");
+  throw new Error("DATABASE_URL missing");
+}
+
+// ====== إعداد Postgres (postgresjs) ======
 const sql = postgres(DATABASE_URL, { ssl: "require" });
 
-// بوت
-const bot = new Telegraf(BOT_TOKEN);
-
-// ====== Debug env ======
-console.log("🆔 ADMIN_ID:", ADMIN_ID || "مفقود!");
-console.log("🤖 BOT_TOKEN:", BOT_TOKEN ? "موجود" : "مفقود!");
-console.log("🗄 DATABASE_URL:", DATABASE_URL ? "موجود" : "مفقود!");
-
-// ====== اتصال قاعدة البيانات ======
+// ====== دوال الاتصال والـ schema ======
 async function connectDB() {
   try {
     await sql`SELECT 1`;
-    console.log("✅ bot.ts: اتصال قاعدة البيانات ناجح");
+    console.log("✅ اتصال بقاعدة البيانات ناجح");
   } catch (err) {
-    console.error("❌ bot.ts: فشل الاتصال:", err.message);
+    console.error("❌ فشل الاتصال بقاعدة البيانات:", err?.message ?? err);
+    // إعادة محاولة بعد 5 ثوانٍ
     setTimeout(connectDB, 5000);
   }
 }
-connectDB();
-
-// ====== مثال أمر للبوت ======
-bot.start((ctx) => ctx.reply("🚀 أهلاً! البوت شغال على Deno Deploy"));
-
-// Webhook
-serve(async (req) => {
-  const url = new URL(req.url);
-  if (url.pathname === "/webhook") {
-    return await bot.handleUpdate(await req.json());
-  }
-  return new Response("OK");
-}, { port: PORT });
 
 // 🔵 إنشاء/تحديث جميع الجداول عند الإقلاع
 async function initSchema() {
@@ -151,6 +144,85 @@ await client.query(`
 }
 
 
+// ====== بدء الاتصال وقبول الـ schema ======
+await connectDB();
+await initSchema();
+
+// ====== تهيئة البوت (Telegraf) ======
+const bot = new Telegraf(BOT_TOKEN);
+
+// مثال: أمر /start
+bot.start(async (ctx) => {
+  // استخرج اسم البوت تلقائيًا (آمن)
+  let botUsername = ctx.botInfo?.username;
+  if (!botUsername) {
+    try {
+      const me = await bot.telegram.getMe();
+      botUsername = me.username;
+    } catch (e) {
+      botUsername = "bot";
+    }
+  }
+
+  // تسجيل المستخدم في جدول users (تجاهل إذا موجود)
+  try {
+    await sql`
+      INSERT INTO users (telegram_id)
+      VALUES (${ctx.from.id})
+      ON CONFLICT (telegram_id) DO NOTHING
+    `;
+  } catch (e) {
+    console.error("⚠️ خطأ عند تسجيل المستخدم:", e?.message ?? e);
+  }
+
+  await ctx.reply(
+    `🚀 أهلاً! البوت شغال على Deno Deploy\nرابط الإحالة (مثال): https://t.me/${botUsername}?start=ref_${ctx.from.id}`
+  );
+});
+
+// مثال: رسالة نصية رد بسيط
+bot.on("text", (ctx) => {
+  // هنا تضع المنطق الخاص بك
+  ctx.reply("استلمت رسالتك — شكراً لك!");
+});
+
+// ====== إعداد Webhook تلقائيًا إذا وُجد WEBHOOK_URL (اختياري) ======
+if (WEBHOOK_URL) {
+  try {
+    const webhookPath = "/webhook";
+    const webhookFull = WEBHOOK_URL.replace(/\/$/, "") + webhookPath;
+    await bot.telegram.setWebhook(webhookFull);
+    console.log(`✅ تم تعيين الويبهوك إلى: ${webhookFull}`);
+  } catch (e) {
+    console.error("⚠️ فشل تعيين الويبهوك تلقائيًا:", e?.message ?? e);
+  }
+}
+
+// ====== HTTP server (Webhook handler + health) ======
+serve(async (req) => {
+  try {
+    const url = new URL(req.url);
+    // health check
+    if (url.pathname === "/health") {
+      return new Response("OK", { status: 200 });
+    }
+
+    // webhook endpoint يجب أن يتلقي POST من telegram
+    if (url.pathname === "/webhook" && req.method === "POST") {
+      const body = await req.json();
+      // مرر التحديث إلى Telegraf
+      await bot.handleUpdate(body);
+      return new Response("OK", { status: 200 });
+    }
+
+    // صفحه افتراضية
+    return new Response("Deno bot is running", { status: 200 });
+  } catch (err) {
+    console.error("Server error:", err);
+    return new Response("Server error", { status: 500 });
+  }
+  // ملاحظة: Deno Deploy يتجاهل عادة خيار PORT على مستوى المنصة
+});
 // ====== Bot setup ======
 if (!process.env.BOT_TOKEN) {
   console.error('❌ BOT_TOKEN غير موجود في ملف .env');

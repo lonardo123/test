@@ -2,16 +2,14 @@ import { Telegraf } from "npm:telegraf";
 import postgres from "https://deno.land/x/postgresjs/mod.js";
 import { serve } from "https://deno.land/std/http/server.ts";
 
-// ====== متغيرات البيئة (اضفها من Dashboard في Deno Deploy) ======
+// ====== متغيرات البيئة ======
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN") ?? "";
 const DATABASE_URL = Deno.env.get("DATABASE_URL") ?? "";
 const ADMIN_ID = Deno.env.get("ADMIN_ID") ?? "";
-// اختياري: ضع هنا Preview URL أو اسم الدومين الكامل بدون المسار /webhook
-// مثال: https://your-project.deno.dev
 const WEBHOOK_URL = Deno.env.get("WEBHOOK_URL") ?? ""; 
 const PORT = Number(Deno.env.get("PORT") ?? 3000);
 
-// تحقق أولي من المتغيرات المهمة
+// تحقق أولي
 if (!BOT_TOKEN) {
   console.error("❌ BOT_TOKEN غير معرف! أضفه في Environment Variables");
   throw new Error("BOT_TOKEN missing");
@@ -21,8 +19,25 @@ if (!DATABASE_URL) {
   throw new Error("DATABASE_URL missing");
 }
 
-// ====== إعداد Postgres (postgresjs) ======
+// ====== قاعدة البيانات ======
 const sql = postgres(DATABASE_URL, { ssl: "require" });
+
+// ====== تهيئة البوت ======
+const bot = new Telegraf(BOT_TOKEN);
+
+// ====== مثال أمر بسيط ======
+bot.start((ctx) => ctx.reply("🚀 أهلاً! البوت شغال على Deno Deploy"));
+
+// ====== Webhook ======
+serve(async (req) => {
+  const url = new URL(req.url);
+  if (url.pathname === "/webhook" && req.method === "POST") {
+    const body = await req.json();
+    await bot.handleUpdate(body);
+    return new Response("OK");
+  }
+  return new Response("Deno bot is running");
+}, { port: PORT });
 
 // ====== دوال الاتصال والـ schema ======
 async function connectDB() {

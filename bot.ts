@@ -5,7 +5,6 @@ import { Client } from 'https://esm.sh/pg';
 console.log('🆔 ADMIN_ID:', Deno.env.get('ADMIN_ID') || 'مفقود!');
 console.log('🤖 BOT_TOKEN:', Deno.env.get('BOT_TOKEN') ? 'موجود' : 'مفقود!');
 console.log('🗄 DATABASE_URL:', Deno.env.get('DATABASE_URL') ? 'موجود' : 'مفقود!');
-console.log('🎯 ADMIN_ID المحدد:', Deno.env.get('ADMIN_ID'));
 
 const userSessions = {};
 
@@ -107,7 +106,7 @@ async function initSchema() {
         id SERIAL PRIMARY KEY,
         user_id BIGINT NOT NULL,
         task_id INT NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
+        status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(user_id, task_id)
       );
@@ -421,16 +420,11 @@ bot.hears('📝 مهمات TasksRewardBot', async (ctx) => {
       const price = parseFloat(t.price) || 0;
       const duration = Number(t.duration_seconds) || 2592000; // افتراضى 30 يوم
 
-      let msg =
-        `📋 المهمة #${t.id}
-` +
-        `🏷️ العنوان: ${t.title}
-` +
-        `📖 الوصف: ${t.description}
-` +
-        `💰 السعر: ${price.toFixed(6)}$
-` +
-        `⏱️ مدة المهمة: ${formatDuration(duration)}
+      let msg = `📋 المهمة #${t.id}
+🏷️ العنوان: ${t.title}
+📖 الوصف: ${t.description}
+💰 السعر: ${price.toFixed(6)}$
+⏱️ مدة المهمة: ${formatDuration(duration)}
 `;
 
       const buttons = [];
@@ -440,8 +434,7 @@ bot.hears('📝 مهمات TasksRewardBot', async (ctx) => {
 
       if (!status || status === 'rejected') {
         // لم يقدّم بعد / رفض سابقاً → يمكنه التقديم الآن
-        msg += `▶️ اضغط "📌 قدّم الآن" لبدء العد.
-`;
+        msg += `▶️ اضغط "📌 قدّم الآن" لبدء العد.`;
         buttons.push([{ text: "📌 قدّم الآن", callback_data: `apply_${t.id}` }]);
       } else if (status === 'applied') {
         // المستخدم قدّم → نحسب الوقت المتبقي منذ applied_at + duration
@@ -459,7 +452,6 @@ bot.hears('📝 مهمات TasksRewardBot', async (ctx) => {
             const remaining = deadline - now;
             msg += `بعد انقضاء المدة المحددة، سيتم تفعيل زر "إرسال الإثبات
 نرجو منك مراجعة متطلبات المهمة والتأكد من تنفيذها بالكامل وفق الوصف قبل إرسال الإثبات، حيث أن أي نقص قد يؤدي إلى رفض المهمة.⏳ الوقت المتبقي لإرسال الإثبات: ${formatRemaining(remaining)}.`;
-            // (لا نعرض زر إرسال إثبات حتى تنتهي المدة)
           }
         } else {
           // للحماية: لو ما فيه applied_at، نطلب منه التقديم مجدداً
@@ -467,7 +459,7 @@ bot.hears('📝 مهمات TasksRewardBot', async (ctx) => {
           buttons.push([{ text: "📌 قدّم الآن", callback_data: `apply_${t.id}` }]);
         }
       } else {
-        // حالات أخرى (مثلاً 'submitted' — لكن عادةُ يتم تحويلها إلى 'pending' عند الإرسال)
+        // حالات أخرى
         msg += `⏳ حالة التقديم: ${status}.`;
       }
 
@@ -488,10 +480,8 @@ bot.action(/^submit_(\d+)$/, async (ctx) => {
   try {
     const taskId = ctx.match[1];
     const userId = ctx.from.id;
-
     if (!userSessions[userId]) userSessions[userId] = {};
     userSessions[userId].awaiting_task_submission = taskId;
-
     await ctx.reply(`📩 أرسل الآن إثبات إتمام المهمة رقم ${taskId}`);
   } catch (err) {
     console.error("❌ submit action error:", err.message, err.stack);
@@ -502,13 +492,11 @@ bot.action(/^submit_(\d+)$/, async (ctx) => {
 // ✅ عند الضغط على زر "قدّم الآن" — يسجل applied ويعرض المدة الفعلية للمهمة
 bot.action(/^apply_(\d+)$/, async (ctx) => {
   try {
-    await ctx.answerCbQuery(); // يغلق الـ spinner على الزر
-
+    await ctx.answerCbQuery();
     const taskId = Number(ctx.match[1]);
     const userId = ctx.from.id;
 
-    // احصل مدة المهمة من جدول tasks
-    let durationSeconds = 30 * 24 * 60 * 60; // افتراض 30 يوم
+    let durationSeconds = 30 * 24 * 60 * 60;
     try {
       const tRes = await client.query('SELECT duration_seconds FROM tasks WHERE id = $1', [taskId]);
       if (tRes.rows.length && tRes.rows[0].duration_seconds) {
@@ -518,7 +506,6 @@ bot.action(/^apply_(\d+)$/, async (ctx) => {
       console.error('❌ خطأ جلب duration_seconds:', e);
     }
 
-    // سجّل أن المستخدم قدّم (أو حدّث وقت التقديم إذا كان موجود)
     await client.query(
       `INSERT INTO user_tasks (user_id, task_id, status, created_at)
        VALUES ($1, $2, 'applied', NOW())
@@ -527,7 +514,6 @@ bot.action(/^apply_(\d+)$/, async (ctx) => {
       [userId, taskId]
     );
 
-    // دالة لعرض المدة بصيغة صديقة للإنسان
     const formatDuration = (secs) => {
       if (!secs) return 'غير محددة';
       if (secs < 60) return `${secs} ثانية`;
@@ -538,10 +524,8 @@ bot.action(/^apply_(\d+)$/, async (ctx) => {
 
     await ctx.reply(
       `📌 تم تسجيل تقديمك على المهمة رقم ${taskId}.
-` +
-      `⏱️ مدة المهمة: ${formatDuration(durationSeconds)}.
-` +
-      `⏳ بعد انتهاء هذه المدة سيظهر لك زر "📝 إرسال إثبات" لإرسال الإثبات.`
+⏱️ مدة المهمة: ${formatDuration(durationSeconds)}.
+⏳ بعد انتهاء هذه المدة سيظهر لك زر "📝 إرسال إثبات" لإرسال الإثبات.`
     );
   } catch (err) {
     console.error('❌ apply error:', err);
@@ -550,14 +534,12 @@ bot.action(/^apply_(\d+)$/, async (ctx) => {
   }
 });
 
-// ✅ استقبال الإثبات من المستخدم — لا يمنع بقية الأزرار من العمل (محدّث: يسجل task_proofs + user_tasks)
+// ✅ استقبال الإثبات من المستخدم — لا يمنع بقية الأزرار من العمل
 bot.on("message", async (ctx, next) => {
   const userId = ctx.from.id;
-
   if (!userSessions[userId]) userSessions[userId] = {};
   const session = userSessions[userId];
 
-  // لو المستخدم في وضع إرسال إثبات
   if (session.awaiting_task_submission) {
     const taskId = Number(session.awaiting_task_submission);
     let proof = ctx.message.text || "";
@@ -568,10 +550,8 @@ bot.on("message", async (ctx, next) => {
     }
 
     try {
-      // نستخدم transaction لحماية الإدخالات
       await client.query('BEGIN');
 
-      // تحقق إذا كانت المهمة قيد الانتظار أو معتمدة بالفعل للمستخدم
       const exists = await client.query(
         'SELECT status FROM user_tasks WHERE user_id = $1 AND task_id = $2',
         [userId, taskId]
@@ -584,13 +564,11 @@ bot.on("message", async (ctx, next) => {
         return;
       }
 
-      // إدخال الإثبات في task_proofs
       await client.query(
         "INSERT INTO task_proofs (task_id, user_id, proof, status, created_at) VALUES ($1, $2, $3, 'pending', NOW())",
         [taskId, userId, proof]
       );
 
-      // إدخال/تحديث سجل user_tasks → يصبح pending (حتى تختفي المهمة من قائمة المستخدم)
       await client.query(
         `INSERT INTO user_tasks (user_id, task_id, status)
          VALUES ($1, $2, 'pending')
@@ -609,10 +587,9 @@ bot.on("message", async (ctx, next) => {
       await ctx.reply("⚠️ لم يتم حفظ الإثبات، حاول مرة أخرى.");
     }
 
-    return; // مهم: لا نمرّر الرسالة لباقي الهاندلرز
+    return;
   }
 
-  // مش في وضع إثبات → مرّر الرسالة لباقي الهاندلرز
   return next();
 });
 
@@ -638,12 +615,11 @@ bot.hears('🔗 قيم البوت من هنا', async (ctx) => {
   }
 });
 
-const MIN_WITHDRAW = 0.03; // غيّرها إلى القيمة التي تريدها
+const MIN_WITHDRAW = 0.03;
 
 // 📤 طلب سحب
 bot.hears('📤 طلب سحب', async (ctx) => {
   if (!ctx.session) ctx.session = {};
-
   const userId = ctx.from.id;
 
   try {
@@ -663,10 +639,9 @@ bot.hears('📤 طلب سحب', async (ctx) => {
   }
 });
 
-// معالجة نصوص عامة (سابقاً كان فيها تعارض مع إرسال الإثبات) — لا تزدوج إرسال الإثبات هنا
+// معالجة نصوص عامة
 bot.on('text', async (ctx, next) => {
   if (!ctx.session) ctx.session = {};
-
   const text = ctx.message?.text?.trim();
   const menuTexts = new Set([
     '💰 رصيدك','🎁 مصادر الربح','📤 طلب سحب','👥 ريفيرال',
@@ -675,7 +650,6 @@ bot.on('text', async (ctx, next) => {
     '🚪 خروج من لوحة الأدمن'
   ]);
 
-  // —— طلب السحب ——
   if (ctx.session.awaiting_withdraw) {
     if (!/^P\d{8,}$/i.test(text)) {
       return ctx.reply('❌ رقم محفظة غير صالح. يجب أن يبدأ بـ P ويحتوي على 8 أرقام على الأقل.');
@@ -707,7 +681,6 @@ bot.on('text', async (ctx, next) => {
     return;
   }
 
-  // —— إضافة / خصم رصيد ——
   if (ctx.session.awaitingAction === 'add_balance' || ctx.session.awaitingAction === 'deduct_balance') {
     if (!ctx.session.targetUser) {
       ctx.session.targetUser = text;
@@ -768,14 +741,10 @@ bot.hears('📋 عرض الطلبات', async (ctx) => {
       for (const req of res.rows) {
         await ctx.reply(
           `طلب سحب #${req.id}
-` +
-          `👤 المستخدم: ${req.user_id}
-` +
-          `💵 المبلغ: ${Number(req.amount).toFixed(2)}$
-` +
-          `💳 Payeer: ${req.payeer_wallet}
-` +
-          `لقبول: /pay ${req.id}
+👤 المستخدم: ${req.user_id}
+💵 المبلغ: ${Number(req.amount).toFixed(2)}$
+💳 Payeer: ${req.payeer_wallet}
+لقبول: /pay ${req.id}
 لرفض: /reject ${req.id}`
         );
       }
@@ -792,12 +761,9 @@ bot.hears('➕ إضافة مهمة جديدة', async (ctx) => {
 
   ctx.session.awaitingAction = 'add_task';
 
-  // نطلب الآن مدة اختياريّة كحقل رابع
-  ctx.reply('📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
-
-            'مثال مدة: 3600s أو 60m أو 1h أو 5d
-
-            'مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d');
+  ctx.reply(`📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
+مثال مدة: 3600s أو 60m أو 1h أو 5d
+مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d`);
 });
 
 // إضافة مهمة - أدمن (مع دعم المدة الخاصة)
@@ -811,31 +777,25 @@ bot.on('text', async (ctx, next) => {
     const raw = ctx.message.text || '';
     const parts = raw.split('|').map(p => p.trim());
 
-    // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
     if (parts.length < 3) {
-      return ctx.reply('❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
-' +
-                       'مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d');
+      return ctx.reply(`❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
+مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d`);
     }
 
-    // تحديد الحقول بناءً على طول الـ parts
     const title = parts[0];
     let description = '';
     let priceStr = '';
     let durationStr = null;
 
     if (parts.length === 3) {
-      // الصيغة القديمة بدون مدة
       description = parts[1];
       priceStr = parts[2];
     } else {
-      // parts.length >= 4 -> آخر عنصر هو المدة، والقبل الأخيرة هي السعر، والباقي وصف
       durationStr = parts[parts.length - 1];
       priceStr = parts[parts.length - 2];
       description = parts.slice(1, parts.length - 2).join(' | ');
     }
 
-    // ======= تحليل السعر كما في الكود الأصلي =======
     const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
     if (!numMatch) {
       return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010 أو 0.0500');
@@ -848,11 +808,9 @@ bot.on('text', async (ctx, next) => {
       return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010');
     }
 
-    // ======= دالة مساعدة لتحويل نص المدة إلى ثوانى =======
     const parseDurationToSeconds = (s) => {
       if (!s) return null;
       s = ('' + s).trim().toLowerCase();
-      // نمط بسيط: رقم + وحدة اختيارية (s,m,h,d) أو فقط رقم (يُعتبر ثواني)
       const m = s.match(/^(\d+(?:[.,]\d+)?)(s|sec|secs|m|min|h|d)?$/);
       if (!m) return null;
       let num = m[1].replace(',', '.');
@@ -864,12 +822,11 @@ bot.on('text', async (ctx, next) => {
         case 'm': case 'min': return Math.round(val * 60);
         case 'h': return Math.round(val * 3600);
         case 'd': return Math.round(val * 86400);
-        default: return Math.round(val); // بدون وحدة → ثواني
+        default: return Math.round(val);
       }
     };
 
-    // ======= تحويل المدة أو وضع الافتراضى (30 يوم) =======
-    const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60; // 2592000
+    const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60;
     let durationSeconds = DEFAULT_DURATION_SECONDS;
 
     if (durationStr) {
@@ -880,14 +837,12 @@ bot.on('text', async (ctx, next) => {
       durationSeconds = parsed;
     }
 
-    // ======= إدخال المهمة في قاعدة البيانات مع duration_seconds =======
     try {
       const res = await client.query(
         'INSERT INTO tasks (title, description, price, duration_seconds) VALUES ($1,$2,$3,$4) RETURNING id, title, price, duration_seconds',
         [title, description, price, durationSeconds]
       );
 
-      // دالة لعرض المدة بصيغة صديقة للإنسان
       const formatDuration = (secs) => {
         if (!secs) return 'غير محددة';
         if (secs % 86400 === 0) return `${secs / 86400} يوم`;
@@ -901,12 +856,9 @@ bot.on('text', async (ctx, next) => {
       await ctx.replyWithHTML(
         `✅ تم إضافة المهمة بنجاح.
 📌 <b>العنوان:</b> ${res.rows[0].title}
-` +
-        `📝 <b>الوصف:</b> ${formattedDescription}
-` +
-        `💰 <b>السعر:</b> ${parseFloat(res.rows[0].price).toFixed(4)}
-` +
-        `⏱️ <b>مدة المهمة:</b> ${formatDuration(res.rows[0].duration_seconds)}`,
+📝 <b>الوصف:</b> ${formattedDescription}
+💰 <b>السعر:</b> ${parseFloat(res.rows[0].price).toFixed(4)}
+⏱️ <b>مدة المهمة:</b> ${formatDuration(res.rows[0].duration_seconds)}`,
         { disable_web_page_preview: true }
       );
 
@@ -914,7 +866,7 @@ bot.on('text', async (ctx, next) => {
     } catch (err) {
       console.error('❌ إضافة مهمة: ', err.message);
       console.error(err.stack);
-      ctx.reply('حدث خطأ أثناء إضافة المهمة. راجع سجلات السيرفر (console) لمعرفة التفاصيل.');
+      ctx.reply('حدث خطأ أثناء إضافة المهمة.');
     }
 
     return;
@@ -943,14 +895,10 @@ bot.hears('📝 المهمات', async (ctx) => {
     for (const t of res.rows) {
       const price = parseFloat(t.price) || 0;
       const text = `📋 المهمة #${t.id}
-` +
-                   `🏷️ العنوان: ${t.title}
-` +
-                   `📖 الوصف: ${t.description}
-` +
-                   `💰 السعر: ${price.toFixed(4)}$
-` +
-                   `⏱️ المدة: ${formatDuration(t.duration_seconds)}`;
+🏷️ العنوان: ${t.title}
+📖 الوصف: ${t.description}
+💰 السعر: ${price.toFixed(4)}$
+⏱️ المدة: ${formatDuration(t.duration_seconds)}`;
 
       await ctx.reply(text, Markup.inlineKeyboard([
         [ Markup.button.callback(`✏️ تعديل ${t.id}`, `edit_${t.id}`) ],
@@ -977,9 +925,9 @@ bot.on('text', async (ctx, next) => {
   const parts = raw.split('|').map(p => p.trim());
 
   if (parts.length < 3) {
-    return ctx.reply('⚠️ الصيغة غير صحيحة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
+    return ctx.reply(`⚠️ الصيغة غير صحيحة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
 مثال:
-coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
+coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d`);
   }
 
   const title = parts[0];
@@ -988,17 +936,14 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
   let durationStr = null;
 
   if (parts.length === 3) {
-    // الصيغة بدون مدة
     description = parts[1];
     priceStr = parts[2];
   } else {
-    // آخر عنصر قد يكون المدة، والقبل أخيره السعر، والباقي وصف
     durationStr = parts[parts.length - 1];
     priceStr = parts[parts.length - 2];
     description = parts.slice(1, parts.length - 2).join(' | ');
   }
 
-  // ====== تحليل السعر (كما في الكود الأصلي) ======
   const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
   if (!numMatch) {
     return ctx.reply('❌ السعر غير صالح. استخدم مثلاً: 0.0500');
@@ -1009,7 +954,6 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010 أو 0.0500');
   }
 
-  // ====== دالة مساعدة لتحويل نص المدة إلى ثواني ======
   const parseDurationToSeconds = (s) => {
     if (!s) return null;
     s = ('' + s).trim().toLowerCase();
@@ -1024,12 +968,11 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
       case 'm': case 'min': return Math.round(val * 60);
       case 'h': return Math.round(val * 3600);
       case 'd': return Math.round(val * 86400);
-      default: return Math.round(val); // بدون وحدة → نعتبرها ثواني
+      default: return Math.round(val);
     }
   };
 
-  // ====== الحصول على قيمة المدة المراد حفظها ======
-  const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 يوم افتراضي
+  const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60;
   let durationSeconds = null;
 
   if (durationStr) {
@@ -1039,7 +982,6 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     }
     durationSeconds = parsed;
   } else {
-    // لو الأدمن لم يحدد مدة: نحافظ على القيمة الحالية في DB
     try {
       const cur = await client.query('SELECT duration_seconds FROM tasks WHERE id=$1', [taskId]);
       durationSeconds = (cur.rows[0] && cur.rows[0].duration_seconds) ? cur.rows[0].duration_seconds : DEFAULT_DURATION_SECONDS;
@@ -1048,7 +990,6 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     }
   }
 
-  // ====== دالة لتنسيق المدة للعرض ======
   const formatDuration = (secs) => {
     if (!secs) return 'غير محددة';
     if (secs < 60) return `${secs} ثانية`;
@@ -1057,7 +998,6 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     return `${Math.floor(secs / 86400)} يوم`;
   };
 
-  // ====== تنفيذ التحديث في DB ======
   try {
     await client.query(
       'UPDATE tasks SET title=$1, description=$2, price=$3, duration_seconds=$4 WHERE id=$5',
@@ -1075,7 +1015,7 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     await ctx.reply('حدث خطأ أثناء تعديل المهمة.');
   }
 
-  return; // لا نمرّر للـ next() لأننا عالجنا الرسالة
+  return;
 });
 
 // ✏️ زر تعديل المهمة (يعين حالة انتظار التعديل)
@@ -1089,16 +1029,11 @@ bot.action(/^edit_(\d+)$/, async (ctx) => {
   ctx.session.awaitingEdit = taskId;
 
   await ctx.answerCbQuery();
-  await ctx.reply(
-    `✏️ أرسل المهمة الجديدة لـ #${taskId} بصيغة:
-` +
-    `العنوان | الوصف | السعر | المدة
-` +
-    `👉 المدة اكتبها بالدقائق أو الساعات أو الأيام.
-` +
-    `مثال:
-coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 3 أيام`
-  );
+  await ctx.reply(`✏️ أرسل المهمة الجديدة لـ #${taskId} بصيغة:
+العنوان | الوصف | السعر | المدة
+👉 المدة اكتبها بالدقائق أو الساعات أو الأيام.
+مثال:
+coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 3 أيام`);
 });
 
 // 🗑️ زر حذف المهمة
@@ -1146,16 +1081,11 @@ bot.hears('📝 اثباتات مهمات المستخدمين', async (ctx) => 
 
     for (const sub of res.rows) {
       const price = parseFloat(sub.price) || 0;
-      const text =
-        `📌 إثبات #${sub.id}
-` +
-        `👤 المستخدم: <code>${sub.user_id}</code>
-` +
-        `📋 المهمة: ${sub.title} (ID: ${sub.task_id})
-` +
-        `💰 المكافأة: ${price.toFixed(4)}$
-` +
-        `📝 الإثبات:
+      const text = `📌 إثبات #${sub.id}
+👤 المستخدم: <code>${sub.user_id}</code>
+📋 المهمة: ${sub.title} (ID: ${sub.task_id})
+💰 المكافأة: ${price.toFixed(4)}$
+📝 الإثبات:
 ${sub.proof}`;
 
       await ctx.replyWithHTML(text, {
@@ -1175,7 +1105,7 @@ ${sub.proof}`;
   }
 });
 
-// ✅ موافقة الأدمن (محدّث: يحدث user_tasks إلى 'approved' داخل المعاملة + إشعار المحيل)
+// ✅ موافقة الأدمن
 bot.action(/^approve_(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx)) return ctx.answerCbQuery('❌ غير مسموح');
 
@@ -1184,7 +1114,6 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
   try {
     await client.query('BEGIN');
 
-    // جلب الإثبات والتأكد من أنه pending
     const subRes = await client.query('SELECT * FROM task_proofs WHERE id=$1 AND status=$2', [subId, 'pending']);
 
     if (!subRes.rows.length) {
@@ -1194,28 +1123,22 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
     }
 
     const sub = subRes.rows[0];
-
-    // جلب سعر المهمة
     const taskRes = await client.query('SELECT price FROM tasks WHERE id=$1', [sub.task_id]);
     const price = parseFloat(taskRes.rows[0]?.price) || 0;
 
-    // إضافة الرصيد للمستخدم (أو إنشاء صف جديد إن لم يكن موجوداً)
     const upd = await client.query('UPDATE users SET balance = COALESCE(balance,0) + $1 WHERE telegram_id = $2', [price, sub.user_id]);
 
     if (upd.rowCount === 0) {
       await client.query('INSERT INTO users (telegram_id, balance) VALUES ($1, $2)', [sub.user_id, price]);
     }
 
-    // تسجيل الربح في earnings
     await client.query(
       'INSERT INTO earnings (user_id, source, amount, description, timestamp) VALUES ($1, $2, $3, $4, NOW())',
       [sub.user_id, 'task', price, `ربح من تنفيذ مهمة ID ${sub.task_id}`]
     );
 
-    // تحديث حالة الإثبات إلى approved
     await client.query('UPDATE task_proofs SET status=$1 WHERE id=$2', ['approved', subId]);
 
-    // تحديث/إدخال سجل user_tasks → approved
     await client.query(
       `INSERT INTO user_tasks (user_id, task_id, status)
        VALUES ($1, $2, 'approved')
@@ -1225,7 +1148,6 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
 
     await client.query('COMMIT');
 
-    // تحديث رسالة الأدمن وإبلاغ المستخدم
     try { 
       await ctx.editMessageText(`✅ تمت الموافقة على الإثبات #${subId}
 👤 المستخدم: ${sub.user_id}
@@ -1236,7 +1158,6 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
       await bot.telegram.sendMessage(sub.user_id, `✅ تمت الموافقة على إثبات المهمة (ID: ${sub.task_id}). المبلغ ${price.toFixed(4)}$ أُضيف إلى رصيدك.`); 
     } catch (_) {}
 
-    // تطبيق مكافأة الإحالة مع إشعار المحيل مباشرة
     try {
       const refRes = await client.query('SELECT referrer_id FROM referrals WHERE referee_id = $1', [sub.user_id]);
 
@@ -1245,14 +1166,12 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
         const commission = price * 0.05;
 
         if (commission > 0) {
-          // إضافة الرصيد للمحيل
           const updRef = await client.query('UPDATE users SET balance = COALESCE(balance,0) + $1 WHERE telegram_id=$2', [commission, referrerId]);
 
           if (updRef.rowCount === 0) {
             await client.query('INSERT INTO users (telegram_id, balance) VALUES ($1,$2)', [referrerId, commission]);
           }
 
-          // تسجيل المكافأة في جدول referral_earnings و earnings
           await client.query(
             'INSERT INTO referral_earnings (referrer_id, referee_id, amount) VALUES ($1,$2,$3)',
             [referrerId, sub.user_id, commission]
@@ -1263,7 +1182,6 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
             [referrerId, commission, 'referral_bonus']
           );
 
-          // إرسال إشعار المحيل
           try {
             await bot.telegram.sendMessage(referrerId, `🎉 حصلت على عمولة ${commission.toFixed(4)}$ من إحالة ${sub.user_id} بعد تنفيذ مهمة.`);
           } catch (_) {}
@@ -1280,14 +1198,13 @@ bot.action(/^approve_(\d+)$/, async (ctx) => {
   }
 });
 
-// ✅ رفض الأدمن (محدّث: يجعل user_tasks = 'rejected' حتى تظهر المهمة للمستخدم مرة أخرى)
+// ✅ رفض الأدمن
 bot.action(/^deny_(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx)) return ctx.answerCbQuery('❌ غير مسموح');
 
   const subId = Number(ctx.match[1]);
 
   try {
-    // نغيّر حالة الإثبات إذا كانت pending
     const res = await client.query(
       'UPDATE task_proofs SET status=$1 WHERE id=$2 AND status=$3 RETURNING *',
       ['rejected', subId, 'pending']
@@ -1297,7 +1214,6 @@ bot.action(/^deny_(\d+)$/, async (ctx) => {
 
     const row = res.rows[0];
 
-    // تحديث/إدخال سجل user_tasks إلى 'rejected' → المهمة ستظهر مجدداً لأننا نستبعد فقط pending/approved عند العرض
     await client.query(
       `INSERT INTO user_tasks (user_id, task_id, status)
        VALUES ($1, $2, 'rejected')
@@ -1306,7 +1222,6 @@ bot.action(/^deny_(\d+)$/, async (ctx) => {
     );
 
     try { await ctx.editMessageText(`❌ تم رفض الإثبات #${subId}`); } catch (_) {}
-
     try { await bot.telegram.sendMessage(row.user_id, `❌ تم رفض إثبات المهمة (ID: ${row.task_id}). يمكنك إعادة المحاولة وإرسال إثبات جديد.`); } catch (_) {}
 
   } catch (err) {
@@ -1330,16 +1245,11 @@ bot.hears('📊 الإحصائيات', async (ctx) => {
 
     await ctx.replyWithHTML(
       `📈 <b>الإحصائيات</b>
-` +
-      `👥 عدد المستخدمين: <b>${users.rows[0].c}</b>
-` +
-      `💰 الأرباح الموزعة: <b>${Number(earnings.rows[0].s).toFixed(2)}$</b>
-` +
-      `📤 المدفوعات: <b>${Number(paid.rows[0].s).toFixed(2)}$</b>
-` +
-      `⏳ طلبات معلقة: <b>${pending.rows[0].c}</b>
-` +
-      `📝 إثباتات مهمات المستخدمين: <b>${proofs.rows[0].c}</b>`
+👥 عدد المستخدمين: <b>${users.rows[0].c}</b>
+💰 الأرباح الموزعة: <b>${Number(earnings.rows[0].s).toFixed(2)}$</b>
+📤 المدفوعات: <b>${Number(paid.rows[0].s).toFixed(2)}$</b>
+⏳ طلبات معلقة: <b>${pending.rows[0].c}</b>
+📝 إثباتات مهمات المستخدمين: <b>${proofs.rows[0].c}</b>`
     );
   } catch (err) {
     console.error('❌ خطأ في الإحصائيات:', err);
@@ -1407,7 +1317,6 @@ bot.command('pay', async (ctx) => {
     const amount = parseFloat(withdrawal.amount).toFixed(2);
     const wallet = withdrawal.payeer_wallet;
 
-    // إرسال إشعار للمستخدم
     try {
       await bot.telegram.sendMessage(
         userId,
@@ -1447,7 +1356,6 @@ bot.command('reject', async (ctx) => {
     const amount = parseFloat(withdrawal.amount).toFixed(2);
     const wallet = withdrawal.payeer_wallet;
 
-    // إرسال إشعار للمستخدم
     try {
       await bot.telegram.sendMessage(
         userId,
@@ -1476,7 +1384,6 @@ bot.command('reject', async (ctx) => {
 
     console.log('✅ bot.js: البوت شُغّل بنجاح');
 
-    // استخدام Deno signals بدلاً من process
     Deno.addSignalListener("SIGINT", () => {
       console.log('🛑 SIGINT: stopping bot...');
       bot.stop('SIGINT');

@@ -967,27 +967,22 @@ bot.hears('📝 المهمات', async (ctx) => {
 // 📌 استلام بيانات التعديل (عند إرسال الأدمن للنص الجديد) — محدث لدعم المدة
 bot.on('text', async (ctx, next) => {
   if (!ctx.session || !ctx.session.awaitingEdit) return next();
-
   if (!isAdmin(ctx)) {
     ctx.session.awaitingEdit = null;
     return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
   }
-
   const taskId = ctx.session.awaitingEdit;
   const raw = ctx.message.text || '';
   const parts = raw.split('|').map(p => p.trim());
-
   if (parts.length < 3) {
     return ctx.reply('⚠️ الصيغة غير صحيحة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
 مثال:
 coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
   }
-
   const title = parts[0];
   let description = '';
   let priceStr = '';
   let durationStr = null;
-
   if (parts.length === 3) {
     // الصيغة بدون مدة
     description = parts[1];
@@ -998,18 +993,15 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     priceStr = parts[parts.length - 2];
     description = parts.slice(1, parts.length - 2).join(' | ');
   }
-
   // ====== تحليل السعر (كما في الكود الأصلي) ======
   const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
   if (!numMatch) {
     return ctx.reply('❌ السعر غير صالح. استخدم مثلاً: 0.0500');
   }
-
   const price = parseFloat(numMatch[0].replace(',', '.'));
   if (isNaN(price) || price <= 0) {
     return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010 أو 0.0500');
   }
-
   // ====== دالة مساعدة لتحويل نص المدة إلى ثواني ======
   const parseDurationToSeconds = (s) => {
     if (!s) return null;
@@ -1028,11 +1020,9 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
       default: return Math.round(val); // بدون وحدة → نعتبرها ثواني
     }
   };
-
   // ====== الحصول على قيمة المدة المراد حفظها ======
   const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60; // 30 يوم افتراضي
   let durationSeconds = null;
-
   if (durationStr) {
     const parsed = parseDurationToSeconds(durationStr);
     if (parsed === null || parsed <= 0) {
@@ -1048,7 +1038,6 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
       durationSeconds = DEFAULT_DURATION_SECONDS;
     }
   }
-
   // ====== دالة لتنسيق المدة للعرض ======
   const formatDuration = (secs) => {
     if (!secs) return 'غير محددة';
@@ -1057,16 +1046,13 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     if (secs < 86400) return `${Math.floor(secs / 3600)} ساعة`;
     return `${Math.floor(secs / 86400)} يوم`;
   };
-
   // ====== تنفيذ التحديث في DB ======
   try {
     await client.query(
       'UPDATE tasks SET title=$1, description=$2, price=$3, duration_seconds=$4 WHERE id=$5',
       [title, description, price, durationSeconds, taskId]
     );
-
     ctx.session.awaitingEdit = null;
-
     await ctx.reply(`✅ تم تعديل المهمة #${taskId} بنجاح.
 📌 العنوان: ${title}
 💰 السعر: ${price.toFixed(4)}$
@@ -1075,33 +1061,8 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     console.error('❌ تعديل المهمة:', err);
     await ctx.reply('حدث خطأ أثناء تعديل المهمة.');
   }
-
   return; // لا نمرّر للـ next() لأننا عالجنا الرسالة
 });
-
-// ✏️ زر تعديل المهمة (يعين حالة انتظار التعديل)
-bot.action(/^edit_(\d+)$/, async (ctx) => {
-  if (!isAdmin(ctx)) {
-    await ctx.answerCbQuery('❌ غير مسموح');
-    return;
-  }
-
-  const taskId = ctx.match[1];
-  ctx.session.awaitingEdit = taskId;
-
-  await ctx.answerCbQuery();
-  await ctx.reply(
-    `✏️ أرسل المهمة الجديدة لـ #${taskId} بصيغة:
-` +
-    `العنوان | الوصف | السعر | المدة
-` +
-    `👉 المدة اكتبها بالدقائق أو الساعات أو الأيام.
-` +
-    `مثال:
-coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 3 أيام`
-  );
-});
-
 // 🗑️ زر حذف المهمة
 bot.action(/^delete_(\d+)$/, async (ctx) => {
   if (!isAdmin(ctx)) {

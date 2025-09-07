@@ -1,4 +1,3 @@
-// استيراد الحزم عبر esm.sh
 import { Telegraf, session, Markup } from 'https://esm.sh/telegraf@4';
 import { Client } from 'https://esm.sh/pg';
 

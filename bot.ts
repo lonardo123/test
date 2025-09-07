@@ -1053,10 +1053,14 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
       [title, description, price, durationSeconds, taskId]
     );
     ctx.session.awaitingEdit = null;
-    await ctx.reply(`✅ تم تعديل المهمة #${taskId} بنجاح.
-📌 العنوان: ${title}
-💰 السعر: ${price.toFixed(4)}$
-⏱️ المدة: ${formatDuration(durationSeconds)}`, { disable_web_page_preview: true });
+   await ctx.replyWithHTML(
+  `✅ تم إضافة المهمة بنجاح.
+📌 <b>العنوان:</b> ${res.rows[0].title}
+📝 <b>الوصف:</b> ${formattedDescription}
+💰 <b>السعر:</b> ${parseFloat(res.rows[0].price).toFixed(4)}
+⏱️ <b>مدة المهمة:</b> ${formatDuration(res.rows[0].duration_seconds)}`,
+  { disable_web_page_preview: true }
+);
   } catch (err) {
     console.error('❌ تعديل المهمة:', err);
     await ctx.reply('حدث خطأ أثناء تعديل المهمة.');

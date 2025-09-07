@@ -1,26 +1,22 @@
-// bot.ts
-
 import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
 
-// إعدادات البيئة
+// الحصول على المتغيرات البيئية
 const TELEGRAM_TOKEN = Deno.env.get("TELEGRAM_TOKEN")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_KEY = Deno.env.get("SUPABASE_KEY")!;
 
-// دالة لإرسال رسالة لتليجرام
+// إرسال رسالة لتليجرام
 async function sendTelegramMessage(chat_id: number, text: string) {
-  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  const res = await fetch(url, {
+  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id, text }),
   });
-  return res.json();
 }
 
-// دالة لتخزين رسالة في Supabase
+// تخزين الرسائل في Supabase
 async function storeMessage(chat_id: number, message: string) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
+  await fetch(`${SUPABASE_URL}/rest/v1/messages`, {
     method: "POST",
     headers: {
       "apikey": SUPABASE_KEY,
@@ -30,19 +26,18 @@ async function storeMessage(chat_id: number, message: string) {
     },
     body: JSON.stringify({ chat_id, message }),
   });
-  return res.json();
 }
 
-// الخادم الرئيسي
+// تشغيل البوت على أي طلب HTTP
 serve(async (req) => {
   if (req.method === "POST") {
     const body = await req.json();
-    
-    if (body.message) {
-      const chat_id = body.message.chat.id;
-      const text = body.message.text || "";
 
-      // تخزين الرسالة في Supabase
+    if (body.message && body.message.text) {
+      const chat_id = body.message.chat.id;
+      const text = body.message.text;
+
+      // تخزين الرسالة
       await storeMessage(chat_id, text);
 
       // إرسال رد تلقائي

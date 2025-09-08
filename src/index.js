@@ -3,13 +3,7 @@ import { Hono } from 'hono';
 import { Telegraf, session, Markup } from 'telegraf';
 import { Pool } from 'pg';
 
-// Cloudflare Workers لا يدعم process.env، نستخدم env من Worker
-// سنمرر env لاحقًا من دالة fetch
-
 // --- END HONO WRAPPER ---
-
-// --- BEGIN ORIGINAL CODE (with minimal adjustments) ---
-// نقوم بلصق الكود الأصلي هنا، مع تعديلات طفيفة جدًا
 
 // 🔵 تعديل: إنشاء دالة `createBotApp(env)` تحتوي على الكود الأصلي كله
 function createBotApp(env) {
@@ -262,7 +256,7 @@ function createBotApp(env) {
         ]).resize()
       );
       await ctx.replyWithHTML(
-        `📌 <b>طريقة العمل:</b>
+`📌 <b>طريقة العمل:</b>
 1️⃣ اضغط على 🎁 <b>مصادر الربح</b> في القائمة.
 2️⃣ اختر 🕒 <b>TimeWall</b>.
 3️⃣ اربط حسابك عبر الرابط الظاهر.
@@ -336,7 +330,7 @@ function createBotApp(env) {
 1️⃣ اضغط على 🎁 <b>مصادر الربح</b> في القائمة.
 2️⃣ اختر 🕒 <b>TimeWall</b>.
 3️⃣ اربط حسابك عبر الرابط الظاهر.
-4️⃣ نفّذ المهام (مشاهدة إعلانات – تنفيذ مهمات بسيطة).
+4️⃣ نفّذ المهام (مشاهدة إعلانات – تنفيذ مهام بسيطة).
 🔑 <b>طريقة سحب المال من TimeWall:</b>
 - ادخل صفحة Withdraw
 - اضغط على زر "سحب" أعلى الصفحة
@@ -703,117 +697,120 @@ function createBotApp(env) {
     }
   });
 
- // ➕ إضافة مهمة جديدة (محدّث: يدعم مدة خاصة لكل مهمة)
-bot.hears('➕ إضافة مهمة جديدة', async (ctx) => {
-  if (!isAdmin(ctx)) return;
-  ctx.session.awaitingAction = 'add_task';
-  // نطلب الآن مدة اختياريّة كحقل رابع
-  ctx.reply(`📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
+  // ➕ إضافة مهمة جديدة (محدّث: يدعم مدة خاصة لكل مهمة)
+  bot.hears('➕ إضافة مهمة جديدة', async (ctx) => {
+    if (!isAdmin(ctx)) return;
+    ctx.session.awaitingAction = 'add_task';
+    // نطلب الآن مدة اختياريّة كحقل رابع
+    ctx.reply(`📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
 مثال مدة: 3600s أو 60m أو 1h أو 5d
 مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d`);
-});
+  });
 
-// إضافة مهمة - أدمن (مع دعم المدة الخاصة)
-bot.on('text', async (ctx, next) => {
-  if (ctx.session && ctx.session.awaitingAction === 'add_task') {
-    if (!isAdmin(ctx)) {
-      delete ctx.session.awaitingAction;
-      return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
-    }
-    const raw = ctx.message.text || '';
-    const parts = raw.split('|').map(p => p.trim());
-    // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
-    if (parts.length < 3) {
-      return ctx.reply(`❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
+  // إضافة مهمة - أدمن (مع دعم المدة الخاصة)
+  bot.on('text', async (ctx, next) => {
+    if (ctx.session && ctx.session.awaitingAction === 'add_task') {
+      if (!isAdmin(ctx)) {
+        delete ctx.session.awaitingAction;
+        return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
+      }
+      const raw = ctx.message.text || '';
+      const parts = raw.split('|').map(p => p.trim());
+      // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
+      if (parts.length < 3) {
+        return ctx.reply(`❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
 مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d`);
-    }
-    // تحديد الحقول بناءً على طول الـ parts
-    const title = parts[0];
-    let description = '';
-    let priceStr = '';
-    let durationStr = null;
-    if (parts.length === 3) {
-      // الصيغة القديمة بدون مدة
-      description = parts[1];
-      priceStr = parts[2];
-    } else {
-      // parts.length >= 4 -> آخر عنصر هو المدة، والقبل الأخيرة هي السعر، والباقي وصف
-      durationStr = parts[parts.length - 1];
-      priceStr = parts[parts.length - 2];
-      description = parts.slice(1, parts.length - 2).join(' | ');
-    }
-    // ======= تحليل السعر كما في الكود الأصلي =======
-    const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
-    if (!numMatch) {
-      return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010 أو 0.0500');
-    }
-    let cleanReward = numMatch[0].replace(',', '.');
-    const price = parseFloat(cleanReward);
-    if (isNaN(price) || price <= 0) {
-      return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010');
-    }
-    // ======= دالة مساعدة لتحويل نص المدة إلى ثوانى =======
-    const parseDurationToSeconds = (s) => {
-      if (!s) return null;
-      s = ('' + s).trim().toLowerCase();
-      // نمط بسيط: رقم + وحدة اختيارية (s,m,h,d) أو فقط رقم (يُعتبر ثواني)
-      const m = s.match(/^(\d+(?:[.,]\d+)?)(s|sec|secs|m|min|h|d)?$/);
-      if (!m) return null;
-      let num = m[1].replace(',', '.');
-      let val = parseFloat(num);
-      if (isNaN(val) || val < 0) return null;
-      const unit = m[2] || '';
-      switch (unit) {
-        case 's': case 'sec': case 'secs': return Math.round(val);
-        case 'm': case 'min': return Math.round(val * 60);
-        case 'h': return Math.round(val * 3600);
-        case 'd': return Math.round(val * 86400);
-        default: return Math.round(val); // بدون وحدة → ثواني
       }
-    };
-    // ======= تحويل المدة أو وضع الافتراضى (30 يوم) =======
-    const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60; // 2592000
-    let durationSeconds = DEFAULT_DURATION_SECONDS;
-    if (durationStr) {
-      const parsed = parseDurationToSeconds(durationStr);
-      if (parsed === null || parsed <= 0) {
-        return ctx.reply('❌ صيغة المدة غير مفهومة. استخدم أمثلة: 3600s أو 60m أو 1h أو 5d');
+      // تحديد الحقول بناءً على طول الـ parts
+      const title = parts[0];
+      let description = '';
+      let priceStr = '';
+      let durationStr = null;
+      if (parts.length === 3) {
+        // الصيغة القديمة بدون مدة
+        description = parts[1];
+        priceStr = parts[2];
+      } else {
+        // parts.length >= 4 -> آخر عنصر هو المدة، والقبل الأخيرة هي السعر، والباقي وصف
+        durationStr = parts[parts.length - 1];
+        priceStr = parts[parts.length - 2];
+        description = parts.slice(1, parts.length - 2).join(' | ');
       }
-      durationSeconds = parsed;
-    }
-    // ======= إدخال المهمة في قاعدة البيانات مع duration_seconds =======
-    try {
-      const res = await client.query(
-        'INSERT INTO tasks (title, description, price, duration_seconds) VALUES ($1,$2,$3,$4) RETURNING id, title, price, duration_seconds',
-        [title, description, price, durationSeconds]
-      );
-      // دالة لعرض المدة بصيغة صديقة للإنسان
-      const formatDuration = (secs) => {
-        if (!secs) return 'غير محددة';
-        if (secs % 86400 === 0) return `${secs / 86400} يوم`;
-        if (secs % 3600 === 0) return `${secs / 3600} ساعة`;
-        if (secs % 60 === 0) return `${secs / 60} دقيقة`;
-        return `${secs} ثانية`;
+      // ======= تحليل السعر كما في الكود الأصلي =======
+      const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
+      if (!numMatch) {
+        return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010 أو 0.0500');
+      }
+      let cleanReward = numMatch[0].replace(',', '.');
+      const price = parseFloat(cleanReward);
+      if (isNaN(price) || price <= 0) {
+        return ctx.reply('❌ السعر غير صالح. مثال صحيح: 0.0010');
+      }
+      // ======= دالة مساعدة لتحويل نص المدة إلى ثوانى =======
+      const parseDurationToSeconds = (s) => {
+        if (!s) return null;
+        s = ('' + s).trim().toLowerCase();
+        // نمط بسيط: رقم + وحدة اختيارية (s,m,h,d) أو فقط رقم (يُعتبر ثواني)
+        const m = s.match(/^(\d+(?:[.,]\d+)?)(s|sec|secs|m|min|h|d)?$/);
+        if (!m) return null;
+        let num = m[1].replace(',', '.');
+        let val = parseFloat(num);
+        if (isNaN(val) || val < 0) return null;
+        const unit = m[2] || '';
+        switch (unit) {
+          case 's': case 'sec': case 'secs': return Math.round(val);
+          case 'm': case 'min': return Math.round(val * 60);
+          case 'h': return Math.round(val * 3600);
+          case 'd': return Math.round(val * 86400);
+          default: return Math.round(val); // بدون وحدة → ثواني
+        }
       };
-      const formattedDescription = description.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1">$1</a>');
-      await ctx.replyWithHTML(
-        `✅ تم إضافة المهمة بنجاح.
+      // ======= تحويل المدة أو وضع الافتراضى (30 يوم) =======
+      const DEFAULT_DURATION_SECONDS = 30 * 24 * 60 * 60; // 2592000
+      let durationSeconds = DEFAULT_DURATION_SECONDS;
+      if (durationStr) {
+        const parsed = parseDurationToSeconds(durationStr);
+        if (parsed === null || parsed <= 0) {
+          return ctx.reply('❌ صيغة المدة غير مفهومة. استخدم أمثلة: 3600s أو 60m أو 1h أو 5d');
+        }
+        durationSeconds = parsed;
+      }
+      // ======= إدخال المهمة في قاعدة البيانات مع duration_seconds =======
+      try {
+        const res = await client.query(
+          'INSERT INTO tasks (title, description, price, duration_seconds) VALUES ($1,$2,$3,$4) RETURNING id, title, price, duration_seconds',
+          [title, description, price, durationSeconds]
+        );
+        // دالة لعرض المدة بصيغة صديقة للإنسان
+        const formatDuration = (secs) => {
+          if (!secs) return 'غير محددة';
+          if (secs % 86400 === 0) return `${secs / 86400} يوم`;
+          if (secs % 3600 === 0) return `${secs / 3600} ساعة`;
+          if (secs % 60 === 0) return `${secs / 60} دقيقة`;
+          return `${secs} ثانية`;
+        };
+        const formattedDescription = description.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1">$1</a>');
+        await ctx.replyWithHTML(
+          `✅ تم إضافة المهمة بنجاح.
 📌 <b>العنوان:</b> ${res.rows[0].title}
-📝 <b>الوصف:</b> ${formattedDescription}
-💰 <b>السعر:</b> ${parseFloat(res.rows[0].price).toFixed(4)}
-⏱️ <b>مدة المهمة:</b> ${formatDuration(res.rows[0].duration_seconds)}`,
-        { disable_web_page_preview: true }
-      );
-      delete ctx.session.awaitingAction;
-    } catch (err) {
-      console.error('❌ إضافة مهمة: ', err.message);
-      console.error(err.stack);
-      ctx.reply('حدث خطأ أثناء إضافة المهمة. راجع سجلات السيرفر (console) لمعرفة التفاصيل.');
+` +
+          `📝 <b>الوصف:</b> ${formattedDescription}
+` +
+          `💰 <b>السعر:</b> ${parseFloat(res.rows[0].price).toFixed(4)}
+` +
+          `⏱️ <b>مدة المهمة:</b> ${formatDuration(res.rows[0].duration_seconds)}`,
+          { disable_web_page_preview: true }
+        );
+        delete ctx.session.awaitingAction;
+      } catch (err) {
+        console.error('❌ إضافة مهمة: ', err.message);
+        console.error(err.stack);
+        ctx.reply('حدث خطأ أثناء إضافة المهمة. راجع سجلات السيرفر (console) لمعرفة التفاصيل.');
+      }
+      return;
     }
-    return;
-  }
-  return next();
-});
+    return next();
+  });
 
   // 📝 عرض كل المهمات (للأدمن) — محدث: يعرض المدة لكل مهمة
   bot.hears('📝 المهمات', async (ctx) => {
@@ -861,9 +858,9 @@ bot.on('text', async (ctx, next) => {
     const raw = ctx.message.text || '';
     const parts = raw.split('|').map(p => p.trim());
     if (parts.length < 3) {
-      return ctx.reply('⚠️ الصيغة غير صحيحة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
+      return ctx.reply(`⚠️ الصيغة غير صحيحة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
 مثال:
-coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
+coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d`);
     }
     const title = parts[0];
     let description = '';
@@ -961,12 +958,9 @@ coinpayu | سجل عبر الرابط https://... | 0.0500 | 10d');
     await ctx.answerCbQuery();
     await ctx.reply(
       `✏️ أرسل المهمة الجديدة لـ #${taskId} بصيغة:
-` +
-      `العنوان | الوصف | السعر | المدة
-` +
-      `👉 المدة اكتبها بالدقائق أو الساعات أو الأيام.
-` +
-      `مثال:
+العنوان | الوصف | السعر | المدة
+👉 المدة اكتبها بالدقائق أو الساعات أو الأيام.
+مثال:
 coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 3 أيام`
     );
   });
@@ -982,11 +976,9 @@ coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.
       const parts = raw.split('|').map(p => p.trim());
       if (parts.length < 4) {
         return ctx.reply(
-          '❌ صيغة خاطئة.
-' +
-          'استخدم: العنوان | الوصف | السعر | المدة
-' +
-          'مثال: coinpayu | اجمع رصيد | 0.0500 | 2 ساعات'
+          `❌ صيغة خاطئة.
+استخدم: العنوان | الوصف | السعر | المدة
+مثال: coinpayu | اجمع رصيد | 0.0500 | 2 ساعات`
         );
       }
       const title = parts[0];
@@ -1077,8 +1069,8 @@ coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.
     const raw = ctx.message.text || '';
     const parts = raw.split('|').map(p => p.trim());
     if (parts.length < 3) {
-      return ctx.reply('⚠️ الصيغة غير صحيحة. مثال:
-coinpayu | سجل عبر الرابط https://... | 0.0500');
+      return ctx.reply(`⚠️ الصيغة غير صحيحة. مثال:
+coinpayu | سجل عبر الرابط https://... | 0.0500`);
     }
     const title = parts[0];
     const description = parts.slice(1, -1).join(' | ');
@@ -1386,8 +1378,7 @@ ${sub.proof}`;
     }
   });
 
-  // ========== Express server + Postback ==========
-  // ⚠️ Cloudflare Workers لا يدعم Express. سنستخدم Hono لمعالجة `/callback`.
+  // ========== Postback endpoint using Hono ==========
   const postbackApp = new Hono();
 
   postbackApp.get('/', (c) => {
@@ -1453,9 +1444,6 @@ ${sub.proof}`;
   });
 
   // ==================== التشغيل النهائي ====================
-  // ⚠️ في Cloudflare Workers، لا نستخدم `app.listen` أو `process.once`.
-  // بدلاً من ذلك، نعيد كائنًا يحتوي على البوت وتطبيق Postback.
-
   // بدء تشغيل البوت
   bot.launch().then(() => {
     console.log('✅ bot.js: البوت شُغّل بنجاح');
@@ -1472,21 +1460,13 @@ ${sub.proof}`;
   return { bot, postbackApp, client };
 }
 
-// --- END ORIGINAL CODE ---
-
 // --- BEGIN CLOUDFLARE WORKER ENTRY POINT ---
-// هذا هو الجزء الذي يتفاعل مع Cloudflare
-
 const app = new Hono();
 
 // نقطة نهاية لمعالجة تحديثات Telegram (Webhook)
 app.post('*', async (c) => {
-  // نمرر متغيرات البيئة من Cloudflare
   const { bot } = createBotApp(c.env);
-
-  // تأكد من POST
   if (c.req.method !== "POST") return new Response("ok", { status: 200 });
-  // تحقق من secret token
   const secret = c.req.header("X-Telegram-Bot-Api-Secret-Token");
   if (!secret || secret !== c.env.TELEGRAM_SECRET_TOKEN) {
     return new Response("invalid token", { status: 401 });
@@ -1497,18 +1477,15 @@ app.post('*', async (c) => {
   } catch (err) {
     return new Response("bad json", { status: 400 });
   }
-  // تمرير التحديث لمعالجك
   const userId = update?.message?.from?.id ?? update?.callback_query?.from?.id;
   if (userId) {
-    // بدلاً من Durable Object، نمرر التحديث مباشرة لبوت Telegraf
     await bot.handleUpdate(update);
   }
-  // رد سريع لتلغرام
   return new Response("OK", { status: 200 });
 });
 
 // نقطة نهاية لمعالجة Postback (GET /callback)
-app.route('/callback', createBotApp(c.env).postbackApp); // ⚠️ هذا غير دقيق، نحتاج لتحسينه
+app.route('/callback', createBotApp(c.env).postbackApp);
 
 // تصدير دالة fetch لـ Cloudflare Worker
 export default app;

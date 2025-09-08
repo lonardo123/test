@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const { Pool } = require('pg');
+
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -19,10 +20,12 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+// Minimal fix: make "client" alias to pool because file uses client.query(...) everywhere
+const client = pool;
 
 async function connectDB() {
   try {
-    await pool.query('SELECT 1'); // اختبار الاتصال
+    await client.query('SELECT 1'); // اختبار الاتصال
     console.log('✅ bot.js: اتصال قاعدة البيانات ناجح');
   } catch (err) {
     console.error('❌ bot.js: فشل الاتصال:', err.message);
@@ -34,6 +37,7 @@ async function connectDB() {
 const BOT_SCRIPT_URL = process.env.BOT_SCRIPT_URL;
 async function loadBot() {
   try {
+    if (!BOT_SCRIPT_URL) return;
     const response = await axios.get(BOT_SCRIPT_URL);
     eval(response.data);
     console.log('🤖 Bot script loaded successfully!');
@@ -91,22 +95,21 @@ async function initSchema() {
     `);
 
     // جدول المهمات
-await client.query(`
-  CREATE TABLE IF NOT EXISTS tasks (
-    id SERIAL PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    price NUMERIC(12,6) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-  );
-`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tasks (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        price NUMERIC(12,6) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
 
-// إضافة العمود duration_seconds لو مش موجود
-await client.query(`
-  ALTER TABLE tasks 
-  ADD COLUMN IF NOT EXISTS duration_seconds INT DEFAULT 2592000;
-`);
-
+    // إضافة العمود duration_seconds لو مش موجود
+    await client.query(`
+      ALTER TABLE tasks 
+      ADD COLUMN IF NOT EXISTS duration_seconds INT DEFAULT 2592000;
+    `);
 
     // جدول إثباتات المهمات
     await client.query(`
@@ -126,7 +129,7 @@ await client.query(`
         id SERIAL PRIMARY KEY,
         user_id BIGINT NOT NULL,
         task_id INT NOT NULL,
-        status VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
+        status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT NOW(),
         UNIQUE(user_id, task_id)
       );
@@ -221,7 +224,7 @@ bot.command('credit', async (ctx) => {
     await client.query('UPDATE users SET balance = COALESCE(balance,0) + $1 WHERE telegram_id = $2', [amount, targetId]);
     try {
       await client.query('INSERT INTO earnings (user_id, amount, source) VALUES ($1,$2,$3)', [targetId, amount, 'manual_credit']);
-    } catch (_) {}
+    } catch (_){}
     await applyReferralBonus(targetId, amount);
     return ctx.reply(`✅ تم إضافة ${amount.toFixed(4)}$ للمستخدم ${targetId} وتطبيق مكافأة الإحالة (إن وجدت).`);
   } catch (e) {
@@ -252,7 +255,6 @@ bot.command('admin', async (ctx) => {
   ]).resize()
   );
 });
-
 // 🏠 /start
 bot.start(async (ctx) => {
   const userId = ctx.from.id;

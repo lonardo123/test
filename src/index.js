@@ -708,11 +708,11 @@ function createBotApp(env) {
   });
 
  // إضافة مهمة - أدمن (مع دعم المدة الخاصة)
-bot.on('text', async (ctx, next) => {
-  if (ctx.session && ctx.session.awaitingAction === 'add_task') {
+bot.on(`text`, async (ctx, next) => {
+  if (ctx.session && ctx.session.awaitingAction === `add_task`) {
     if (!isAdmin(ctx)) {
       delete ctx.session.awaitingAction;
-      return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
+      return ctx.reply(`❌ ليس لديك صلاحيات الأدمن.`);
     }
 
     const raw = ctx.message.text || '';

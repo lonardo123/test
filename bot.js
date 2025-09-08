@@ -1,37 +1,45 @@
-const { Telegraf, session, Markup } = require('telegraf');
-require('dotenv').config();
-const express = require('express');
-const axios = require('axios');
-const { Pool } = require('pg');
+// worker/index.js (module worker)
+export default {
+  async fetch(request, env) {
+    // تأكد من POST
+    if (request.method !== "POST") return new Response("ok", { status: 200 });
 
-const app = express();
-const port = process.env.PORT || 3000;
+    // تحقق من secret token (اظبط SECRET_TOKEN في متغيرات البيئة)
+    const secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+    if (!secret || secret !== env.TELEGRAM_SECRET_TOKEN) {
+      return new Response("invalid token", { status: 401 });
+    }
 
-// ====== Debug env ======
-console.log('🆔 ADMIN_ID:', process.env.ADMIN_ID || 'مفقود!');
-console.log('🤖 BOT_TOKEN:', process.env.BOT_TOKEN ? 'موجود' : 'مفقود!');
-console.log('🗄 DATABASE_URL:', process.env.DATABASE_URL ? 'موجود' : 'مفقود!');
-console.log('🎯 ADMIN_ID المحدد:', process.env.ADMIN_ID);
+    let update;
+    try {
+      update = await request.json();
+    } catch (err) {
+      return new Response("bad json", { status: 400 });
+    }
 
-const userSessions = {};
+    // تمرير التحديث لمعالجك: يمكن أن يستدعي Durable Object أو وظيفة داخلية
+    // مثال: نرسل رسالة لأوبجكت يدير حالة المستخدم
+    const userId = update?.message?.from?.id ?? update?.callback_query?.from?.id;
+    if (userId) {
+      // مثال على استدعاء Durable Object باسم المستخدم
+      const id = env.USER_DO.idFromName(String(userId));
+      const obj = env.USER_DO.get(id);
+      // لاحظ: handleUpdate يجب أن تكون طريقة على Durable Object
+      obj.fetch("https://do.handle/update", {
+        method: "POST",
+        body: JSON.stringify(update),
+        headers: { "Content-Type": "application/json" }
+      }).catch(e => {
+        // سجل الخطأ، أو ضع في Queue لإعادة المعالجة
+        console.error("DO dispatch failed", e);
+      });
+    }
 
-// ====== Postgres Pool ======
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-// Minimal fix: make "client" alias to pool because file uses client.query(...) everywhere
-const client = pool;
-
-async function connectDB() {
-  try {
-    await client.query('SELECT 1'); // اختبار الاتصال
-    console.log('✅ bot.js: اتصال قاعدة البيانات ناجح');
-  } catch (err) {
-    console.error('❌ bot.js: فشل الاتصال:', err.message);
-    setTimeout(connectDB, 5000);
+    // رد سريع لتلغرام
+    return new Response("OK", { status: 200 });
   }
 }
+
 
 // ====== تحميل البوت من رابط واحد ======
 const BOT_SCRIPT_URL = process.env.BOT_SCRIPT_URL;

@@ -2,7 +2,11 @@ name = "telegram-cpa-bot"
 main = "src/index.js"
 compatibility_date = "2025-09-08"
 
-# تعريف متغيرات البيئة (ستملؤها لاحقًا من لوحة Cloudflare)
+# تفعيل السجلات (Logs) لمراقبة الأداء والأخطاء
+[observability.logs]
+enabled = true
+
+# تعريف متغيرات البيئة (سيتم تعيين القيم الفعلية لاحقًا من لوحة Cloudflare)
 [vars]
 BOT_TOKEN = ""
 TELEGRAM_SECRET_TOKEN = ""

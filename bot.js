@@ -1,4 +1,4 @@
-// worker/index.js (module worker)
+// worker/bot.js (module worker)
 export default {
   async fetch(request, env) {
     // تأكد من POST

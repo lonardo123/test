@@ -707,12 +707,12 @@ function createBotApp(env) {
 مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d`);
   });
 
- // إضافة مهمة - أدمن (مع دعم المدة الخاصة)
-bot.on(`text`, async (ctx, next) => {
-  if (ctx.session && ctx.session.awaitingAction === `add_task`) {
+// إضافة مهمة - أدمن (مع دعم المدة الخاصة)
+bot.on('text', async (ctx, next) => {
+  if (ctx.session && ctx.session.awaitingAction === 'add_task') {
     if (!isAdmin(ctx)) {
       delete ctx.session.awaitingAction;
-      return ctx.reply(`❌ ليس لديك صلاحيات الأدمن.`);
+      return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
     }
 
     const raw = ctx.message.text || '';
@@ -721,8 +721,8 @@ bot.on(`text`, async (ctx, next) => {
     // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
     if (parts.length < 3) {
       return ctx.reply(
-        "❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)\n" +
-        "مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d"
+        '❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)\n' +
+        'مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d'
       );
       }
       // تحديد الحقول بناءً على طول الـ parts

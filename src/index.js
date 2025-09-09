@@ -697,45 +697,61 @@ function createBotApp(env) {
     }
   });
 
-  // ➕ إضافة مهمة جديدة (محدّث: يدعم مدة خاصة لكل مهمة)
-  bot.hears('➕ إضافة مهمة جديدة', async (ctx) => {
-    if (!isAdmin(ctx)) return;
-    ctx.session.awaitingAction = 'add_task';
-    // نطلب الآن مدة اختياريّة كحقل رابع
-    ctx.reply("📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
+// ➕ إضافة مهمة جديدة (محدّث: يدعم مدة خاصة لكل مهمة)
+bot.hears('➕ إضافة مهمة جديدة', async (ctx) => {
+  if (!isAdmin(ctx)) return;
+  ctx.session.awaitingAction = 'add_task';
+  // نطلب الآن مدة اختياريّة كحقل رابع
+  ctx.reply(`📌 أرسل المهمة الجديدة بصيغة: العنوان | الوصف | السعر | المدة (اختياري)
 مثال مدة: 3600s أو 60m أو 1h أو 5d
-مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d");
-  });
+مثال كامل: coinpayu | اجمع رصيد وارفق رابط التسجيل https://... | 0.0500 | 30d`);
+});
 
-  // إضافة مهمة - أدمن (مع دعم المدة الخاصة)
-  bot.on('text', async (ctx, next) => {
-    if (ctx.session && ctx.session.awaitingAction === 'add_task') {
-      if (!isAdmin(ctx)) {
-        delete ctx.session.awaitingAction;
-        return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
-      }
-      const raw = ctx.message.text || '';
-      const parts = raw.split('|').map(p => p.trim());
-      // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
-      if (parts.length < 3) {
-        return ctx.reply("❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
-مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d");
-      }
-      // تحديد الحقول بناءً على طول الـ parts
-      const title = parts[0];
-      let description = '';
-      let priceStr = '';
-      let durationStr = null;
-      if (parts.length === 3) {
-        // الصيغة القديمة بدون مدة
-        description = parts[1];
-        priceStr = parts[2];
-      } else {
-        // parts.length >= 4 -> آخر عنصر هو المدة، والقبل الأخيرة هي السعر، والباقي وصف
-        durationStr = parts[parts.length - 1];
-        priceStr = parts[parts.length - 2];
-        description = parts.slice(1, parts.length - 2).join(' | ');
-      }
+// إضافة مهمة - أدمن (مع دعم المدة الخاصة)
+bot.on('text', async (ctx, next) => {
+  if (ctx.session && ctx.session.awaitingAction === 'add_task') {
+    if (!isAdmin(ctx)) {
+      delete ctx.session.awaitingAction;
+      return ctx.reply('❌ ليس لديك صلاحيات الأدمن.');
+    }
+
+    const raw = ctx.message.text || '';
+    const parts = raw.split('|').map(p => p.trim());
+
+    // نسمح بصيغة 3 أجزاء (بدون مدة) أو 4 أجزاء (بمدة)
+    if (parts.length < 3) {
+      return ctx.reply(`❌ صيغة خاطئة. استخدم: العنوان | الوصف | السعر | المدة (اختياري)
+مثال: coinpayu | اجمع رصيد وارفق رابط الموقع https://... | 0.0500 | 30d`);
+    }
+
+    // تحديد الحقول بناءً على طول الـ parts
+    const title = parts[0];
+    let description = '';
+    let priceStr = '';
+    let durationStr = null;
+
+    if (parts.length === 3) {
+      // الصيغة القديمة بدون مدة
+      description = parts[1];
+      priceStr = parts[2];
+    } else {
+      // parts.length >= 4 -> آخر عنصر هو المدة، والقبل الأخيرة هي السعر، والباقي وصف
+      durationStr = parts[parts.length - 1];
+      priceStr = parts[parts.length - 2];
+      description = parts.slice(1, parts.length - 2).join(' | ');
+    }
+
+    // ✅ هنا تكمل باقي لوجيك إضافة المهمة (حفظ DB أو غيره)
+    ctx.reply(`✅ تم استلام المهمة:
+العنوان: ${title}
+الوصف: ${description}
+السعر: ${priceStr}
+المدة: ${durationStr || 'افتراضية'}`);
+  } else {
+    return next();
+  }
+});
+
       // ======= تحليل السعر كما في الكود الأصلي =======
       const numMatch = priceStr.match(/[\d]+(?:[.,]\d+)*/);
       if (!numMatch) {

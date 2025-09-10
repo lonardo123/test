@@ -1,18 +1,44 @@
-// --- BEGIN HONO WRAPPER FOR CLOUDFLARE WORKERS ---
+import { Bot } from "grammy";
 import { Hono } from "hono";
-import { Bot, session } from "grammy";
 import { serve } from "@hono/node-server";
 import { neon } from "@neondatabase/serverless";
 
-// --- END HONO WRAPPER ---
+// إنشاء Hono app
+const app = new Hono();
 
-// 🔵 إنشاء دالة `createBotApp(env)`
-function createBotApp(env: Record<string, string>) {
-  // 🔵 عميل قاعدة البيانات (Neon serverless)
-  const sql = neon(env.DATABASE_URL);
+// إنشاء عميل PostgreSQL عبر Neon
+const sql = neon(process.env.DATABASE_URL);
 
-  // 🔵 userSessions في الذاكرة (بديل سريع)
-  const userSessions: Record<string, any> = {};
+// إنشاء بوت Telegram باستخدام grammy
+const bot = new Bot(process.env.BOT_TOKEN);
+
+// مثال: أمر start
+bot.command("start", async (ctx) => {
+  await ctx.reply("👋 أهلاً بيك! البوت شغال عبر Cloudflare Workers + Neon 🚀");
+});
+
+// مثال: تخزين مستخدم في قاعدة البيانات
+bot.command("register", async (ctx) => {
+  const userId = ctx.from.id;
+  await sql`INSERT INTO users (id, username) VALUES (${userId}, ${ctx.from.username}) 
+            ON CONFLICT (id) DO NOTHING`;
+  await ctx.reply("✅ تم تسجيلك في قاعدة البيانات");
+});
+
+// Webhook endpoint
+app.post("/webhook", async (c) => {
+  const body = await c.req.json();
+  await bot.handleUpdate(body);
+  return c.json({ ok: true });
+});
+
+// تشغيل السيرفر محلياً (للـ dev فقط)
+if (process.env.NODE_ENV !== "production") {
+  serve({ fetch: app.fetch, port: 3000 });
+}
+
+export default app;
+
 
   // 🔵 إنشاء/تحديث جميع الجداول
   async function initSchema() {

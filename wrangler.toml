@@ -1,10 +1,7 @@
 name = "telegram-cpa-bot"
 main = "src/index.js"
 compatibility_date = "2025-09-10"
-compatibility_flags = ["nodejs_compat"]
 
-[observability.logs]
-enabled = true
 
 [vars]
 BOT_TOKEN = ""

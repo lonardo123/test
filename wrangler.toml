@@ -1,9 +1,0 @@
-name = "telegram-cpa-bot"
-main = "src/index.js"
-compatibility_date = "2025-09-10"
-
-
-[vars]
-BOT_TOKEN = ""
-ADMIN_ID = ""
-DATABASE_URL = ""

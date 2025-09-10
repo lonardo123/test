@@ -1,39 +1,33 @@
+// --- BEGIN HONO WRAPPER FOR CLOUDFLARE WORKERS ---
 import { Hono } from "hono";
+import { Bot, session } from "grammy";
 import { serve } from "@hono/node-server";
-import { Bot, session, InlineKeyboard } from "grammy";
 import { neon } from "@neondatabase/serverless";
+
 // --- END HONO WRAPPER ---
 
-// 🔵 تعديل: إنشاء دالة `createBotApp(env)` تحتوي على الكود الأصلي كله
-function createBotApp(env) {
-  // 🔵 تعديل: إنشاء عميل قاعدة بيانات باستخدام `env.DATABASE_URL`
-  const client = neon(env.DATABASE_URL);
+// 🔵 إنشاء دالة `createBotApp(env)`
+function createBotApp(env: Record<string, string>) {
+  // 🔵 عميل قاعدة البيانات (Neon serverless)
+  const sql = neon(env.DATABASE_URL);
 
-  // 🔵 تعديل: تعريف `userSessions` لأنه كان مفقودًا في الكود الأصلي
-  const userSessions = {};
+  // 🔵 userSessions في الذاكرة (بديل سريع)
+  const userSessions: Record<string, any> = {};
 
-  // ====== تحميل البوت من رابط واحد ======
-  // ⚠️ تم تعطيل هذه الوظيفة لأن `axios` و `eval` غير مدعومين في Workers.
-  const BOT_SCRIPT_URL = env.BOT_SCRIPT_URL; // ⚠️ تعديل: env بدلاً من process.env
-  async function loadBot() {
-    console.log("🤖 Bot script loading via eval is disabled for security in Workers.");
-  }
-
-  // 🔵 إنشاء/تحديث جميع الجداول عند الإقلاع
+  // 🔵 إنشاء/تحديث جميع الجداول
   async function initSchema() {
     try {
-      // جدول المستخدمين
-      await client.query(`
+      await sql`
         CREATE TABLE IF NOT EXISTS users (
           id SERIAL PRIMARY KEY,
           telegram_id BIGINT UNIQUE NOT NULL,
           balance NUMERIC(12,6) DEFAULT 0,
           payeer_wallet VARCHAR(50),
           created_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // جدول الأرباح
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS earnings (
           id SERIAL PRIMARY KEY,
           user_id BIGINT NOT NULL,
@@ -41,44 +35,40 @@ function createBotApp(env) {
           amount NUMERIC(12,6) NOT NULL,
           description TEXT,
           timestamp TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // جدول الإحالات
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS referrals (
           id SERIAL PRIMARY KEY,
           referrer_id BIGINT NOT NULL,
           referee_id BIGINT NOT NULL UNIQUE,
           created_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // جدول أرباح الإحالة
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS referral_earnings (
           id SERIAL PRIMARY KEY,
           referrer_id BIGINT NOT NULL,
           referee_id BIGINT NOT NULL,
           amount NUMERIC(12,6) NOT NULL,
           created_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // جدول المهمات
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS tasks (
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
           description TEXT,
           price NUMERIC(12,6) NOT NULL,
+          duration_seconds INT DEFAULT 2592000,
           created_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // إضافة العمود duration_seconds لو مش موجود
-      await client.query(`
-        ALTER TABLE tasks 
-        ADD COLUMN IF NOT EXISTS duration_seconds INT DEFAULT 2592000;
-      `);
-      // جدول إثباتات المهمات
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS task_proofs (
           id SERIAL PRIMARY KEY,
           task_id INT NOT NULL,
@@ -86,10 +76,10 @@ function createBotApp(env) {
           proof TEXT,
           status VARCHAR(20) DEFAULT 'pending',
           created_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      // جدول تتبع حالة المهمة لكل مستخدم
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS user_tasks (
           id SERIAL PRIMARY KEY,
           user_id BIGINT NOT NULL,
@@ -97,10 +87,10 @@ function createBotApp(env) {
           status VARCHAR(20) DEFAULT 'pending',
           created_at TIMESTAMP DEFAULT NOW(),
           UNIQUE(user_id, task_id)
-        );
-      `);
-      // جدول السحوبات
-      await client.query(`
+        )
+      `;
+
+      await sql`
         CREATE TABLE IF NOT EXISTS withdrawals (
           id SERIAL PRIMARY KEY,
           user_id BIGINT NOT NULL,
@@ -108,31 +98,65 @@ function createBotApp(env) {
           payeer_wallet VARCHAR(50) NOT NULL,
           status VARCHAR(20) DEFAULT 'pending',
           requested_at TIMESTAMP DEFAULT NOW()
-        );
-      `);
-      console.log('✅ initSchema: تم تجهيز كل الجداول بنجاح');
-    } catch (e) {
-      console.error('❌ initSchema:', e);
+        )
+      `;
+
+      console.log("✅ initSchema: تم تجهيز الجداول بنجاح");
+    } catch (err) {
+      console.error("❌ initSchema:", err);
     }
   }
 
   // ====== Bot setup ======
-  if (!env.BOT_TOKEN) { // ⚠️ تعديل: env بدلاً من process.env
-    console.error('❌ BOT_TOKEN غير موجود في ملف .env');
-    throw new Error('BOT_TOKEN is required');
+  if (!env.BOT_TOKEN) {
+    throw new Error("❌ BOT_TOKEN غير موجود في بيئة التشغيل");
   }
-  const bot = new Telegraf(env.BOT_TOKEN); // ⚠️ تعديل: env بدلاً من process.env
+  const bot = new Bot(env.BOT_TOKEN);
 
   // Enable in-memory sessions
-  bot.use(session());
+  bot.use(session({ initial: () => ({}) }));
 
-  // Simple logger
-  bot.use((ctx, next) => {
-    const from = ctx.from ? `${ctx.from.id} (${ctx.from.username || ctx.from.first_name})` : 'unknown';
+  // Logger
+  bot.use(async (ctx, next) => {
+    const from = ctx.from
+      ? `${ctx.from.id} (${ctx.from.username || ctx.from.first_name})`
+      : "unknown";
     const text = ctx.message?.text || ctx.updateType;
-    console.log('📩', from, '→', text);
-    return next();
+    console.log("📩", from, "→", text);
+    await next();
   });
+
+  // أمر /start
+  bot.command("start", async (ctx) => {
+    await ctx.reply("👋 أهلاً بك! البوت جاهز للعمل.");
+  });
+
+  // 🔵 Hono app
+  const app = new Hono();
+
+  app.get("/", (c) => c.text("✅ Bot is running"));
+
+  app.post("/webhook", async (c) => {
+    const update = await c.req.json();
+    await bot.handleUpdate(update);
+    return c.json({ ok: true });
+  });
+
+  // تشغيل البوت
+  initSchema();
+  return app;
+}
+
+// تشغيل السيرفر (للـ local dev فقط)
+if (process.env.NODE_ENV === "development") {
+  const app = createBotApp(process.env);
+  serve(app);
+}
+
+export default {
+  fetch: createBotApp,
+};
+
 
   // Utility: ensure admin
   const isAdmin = (ctx) => String(ctx.from?.id) === String(env.ADMIN_ID); // ⚠️ تعديل: env بدلاً من process.env

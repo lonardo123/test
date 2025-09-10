@@ -1,19 +1,13 @@
-// --- BEGIN HONO WRAPPER FOR CLOUDFLARE WORKERS ---
-import { Hono } from 'hono';
-import { Telegraf, session, Markup } from 'telegraf';
-import { Pool } from 'pg';
-
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { Bot, session, InlineKeyboard } from "grammy";
+import { neon } from "@neondatabase/serverless";
 // --- END HONO WRAPPER ---
 
 // 🔵 تعديل: إنشاء دالة `createBotApp(env)` تحتوي على الكود الأصلي كله
 function createBotApp(env) {
   // 🔵 تعديل: إنشاء عميل قاعدة بيانات باستخدام `env.DATABASE_URL`
-  const client = new Pool({
-    connectionString: env.DATABASE_URL,
-    ssl: env.DATABASE_URL.includes('cockroachlabs') ? {
-      rejectUnauthorized: false // ⚠️ ضروري لـ CockroachDB في Cloudflare
-    } : true
-  });
+  const client = neon(env.DATABASE_URL);
 
   // 🔵 تعديل: تعريف `userSessions` لأنه كان مفقودًا في الكود الأصلي
   const userSessions = {};
@@ -22,7 +16,7 @@ function createBotApp(env) {
   // ⚠️ تم تعطيل هذه الوظيفة لأن `axios` و `eval` غير مدعومين في Workers.
   const BOT_SCRIPT_URL = env.BOT_SCRIPT_URL; // ⚠️ تعديل: env بدلاً من process.env
   async function loadBot() {
-    console.log('🤖 Bot script loading via eval is disabled for security in Workers.');
+    console.log("🤖 Bot script loading via eval is disabled for security in Workers.");
   }
 
   // 🔵 إنشاء/تحديث جميع الجداول عند الإقلاع

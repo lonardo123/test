@@ -1,15 +1,11 @@
 name = "telegram-cpa-bot"
-main = "src/index.js"
+main = "index.js"
 compatibility_date = "2025-09-11"
-
-# تشغيل وضع توافق Node.js (مهم للبعض من المكتبات)
 compatibility_flags = ["nodejs_compat"]
 
-# مراقبة السجلات
 [observability.logs]
 enabled = true
 
-# متغيرات البيئة (هتحط القيم الحقيقية من Dashboard)
 [vars]
 BOT_TOKEN = ""
 TELEGRAM_SECRET_TOKEN = ""

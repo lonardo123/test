@@ -1,6 +1,6 @@
 // --- BEGIN HONO WRAPPER FOR CLOUDFLARE WORKERS ---
-import { Hono } from 'hono';
-import { Telegraf, session, Markup } from 'telegraf';
+import { Bot } from "grammy";
+import { neon } from "@neondatabase/serverless";
 import { Pool } from 'pg';
 
 // --- END HONO WRAPPER ---

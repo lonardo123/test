@@ -1,0 +1,7 @@
+name = "telegram-task-bot"
+main = "index.js"
+compatibility_date = "2025-09-11"
+
+# متغيرات البيئة (يجب إضافتها في Cloudflare Dashboard أو عبر wrangler)
+# wrangler secret put BOT_TOKEN
+# wrangler secret put DATABASE_URL

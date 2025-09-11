@@ -1,0 +1,13 @@
+name = "telegram-cpa-bot"
+main = "src/index.js"
+compatibility_date = "2025-09-08"
+
+[observability.logs]
+enabled = true
+
+[vars]
+BOT_TOKEN = ""
+TELEGRAM_SECRET_TOKEN = ""
+ADMIN_ID = ""
+CALLBACK_SECRET = ""
+DATABASE_URL = ""

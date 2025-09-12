@@ -1,7 +1,7 @@
 {
-  "name": "telegram-bot-nodejs",
+  "name": "telegram-bot-modal",
   "version": "1.0.0",
-  "description": "A Telegram bot for managing tasks and referrals",
+  "description": "A powerful Telegram bot for managing tasks, referrals, and withdrawals",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js"

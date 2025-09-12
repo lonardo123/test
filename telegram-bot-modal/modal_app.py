@@ -1,4 +1,3 @@
-# 📄 modal_app.py — الملف الصحيح لمشروعك
 import modal
 import subprocess
 

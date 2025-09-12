@@ -1,9 +1,12 @@
 import modal
 import subprocess
 
-# بناء صورة Docker من Node.js
-image = modal.Image.from_registry("node:20-alpine").copy_local_dir(".", "/app").run_commands(
-    "cd /app && npm ci --only=production"
+image = (
+    modal.Image.from_registry("node:20-alpine")
+    .workdir("/app")
+    .copy_local_file("bot.js", "/app/bot.js")
+    .copy_local_file("package.json", "/app/package.json")
+    .run_commands("npm ci --only=production")
 )
 
 # إنشاء التطبيق — هنا نغيّر الاسم ✅

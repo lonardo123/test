@@ -1,4 +1,3 @@
-# modal_app.py
 import modal
 
 # بناء صورة Docker من الملف المحلي

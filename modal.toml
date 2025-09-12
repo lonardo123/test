@@ -1,6 +1,0 @@
-# .modal.toml
-[project]
-name = "telegram-bot-nodejs"
-
-[deploy]
-# يمكنك إضافة إعدادات إضافية هنا إذا لزم الأمر

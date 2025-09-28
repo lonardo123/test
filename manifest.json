@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TasksRewardBot - اربح من المشاهدة",
   "version": "1.0",
-  "description": "شاهد فيديوهات يوتيوب من فيسبوك/إنستجرام واربح رصيدًا!",
+  "description": "شاهد فيديوهات واربح رصيدًا!",
   "permissions": ["storage"],
   "host_permissions": ["https://www.youtube.com/*"],
   "content_scripts": [{

@@ -9,11 +9,9 @@
       background: #2c2c2c;
       color: white;
       margin: 0;
-      box-sizing: border-box;
     }
     h3 {
       margin: 0 0 10px;
-      color: #fff;
       text-align: center;
     }
     .tab-container {
@@ -29,14 +27,12 @@
       text-align: center;
       cursor: pointer;
       background: #444;
-      transition: background 0.2s;
     }
     .tab.active {
       background: #555;
     }
     .content {
       display: none;
-      padding: 10px;
     }
     .content.active {
       display: block;
@@ -46,15 +42,6 @@
       justify-content: space-between;
       padding: 8px;
       border-bottom: 1px solid #444;
-    }
-    .info-item:last-child {
-      border-bottom: none;
-    }
-    .label {
-      font-weight: bold;
-    }
-    .value {
-      font-weight: normal;
     }
     button {
       width: 100%;
@@ -67,16 +54,12 @@
       font-size: 16px;
       margin-top: 15px;
     }
-    button:hover {
-      background: #0056b3;
-    }
     .status {
       margin-top: 10px;
       padding: 8px;
       background: #444;
       border-radius: 4px;
       text-align: center;
-      font-size: 14px;
     }
   </style>
 </head>
@@ -90,16 +73,16 @@
 
   <div class="content active" id="main">
     <div class="info-item">
-      <span class="label">User:</span>
-      <span class="value" id="userIdDisplay">-</span>
+      <span>User:</span>
+      <span id="userIdDisplay">-</span>
     </div>
     <div class="info-item">
-      <span class="label">Balance:</span>
-      <span class="value" id="balanceDisplay">0.00</span>
+      <span>Balance:</span>
+      <span id="balanceDisplay">0.00</span>
     </div>
     <div class="info-item">
-      <span class="label">Status:</span>
-      <span class="value" id="statusDisplay">Idle</span>
+      <span>Status:</span>
+      <span id="statusDisplay">Idle</span>
     </div>
     <button id="startBtn">Start Worker</button>
     <div class="status" id="message"></div>
@@ -107,8 +90,8 @@
 
   <div class="content" id="settings">
     <div class="info-item">
-      <span class="label">User ID:</span>
-      <input type="text" id="userIdInput" style="width: 100%; background: #333; color: white; border: 1px solid #555; padding: 5px;">
+      <span>User ID:</span>
+      <input type="text" id="userIdInput" style="width:100%;background:#333;color:white;border:1px solid #555;padding:5px;">
     </div>
     <button id="saveBtn">Save Settings</button>
   </div>

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "TasksRewardBot - اربح من المشاهدة",
+  "name": "TasksRewardBot - Chrome v1.0",
   "short_name": "TasksRewardBot",
   "version": "1.0.0",
-  "description": "شاهد فيديوهات يوتيوب تلقائياً واربح — تدعم مصادر متعددة (YouTube, Facebook, Instagram, Google).",
+  "description": "شاهد فيديوهات يوتيوب تلقائياً واربح — TasksRewardBot.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
@@ -13,7 +13,6 @@
     "storage",
     "tabs",
     "scripting",
-    "notifications",
     "activeTab"
   ],
   "host_permissions": [

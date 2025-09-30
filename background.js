@@ -15,28 +15,21 @@ function storageSet(obj) {
   return new Promise(resolve => chrome.storage.local.set(obj, resolve));
 }
 
-// دالة آمنة لجلب الفيديو مع تسجيل مفصل
 async function fetchNextVideo(userId) {
   const url = `${API_BASE}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
   console.log('🔍 [TasksRewardBot] جارٍ طلب الفيديو من:', url);
 
   const res = await fetch(url);
   const textResponse = await res.text();
-  console.log('📄 [TasksRewardBot] نص الرد من السيرفر:', textResponse);
+  console.log('📄 [TasksRewardBot] نص الرد:', textResponse);
 
-  if (!res.ok) {
-    throw new Error(`السيرفر أجاب بحالة ${res.status}`);
-  }
-
-  if (!textResponse.trim()) {
-    throw new Error('الرد من السيرفر فارغ');
-  }
+  if (!res.ok) throw new Error(`السيرفر أجاب بحالة ${res.status}`);
+  if (!textResponse.trim()) throw new Error('الرد فارغ');
 
   let data;
   try {
     data = JSON.parse(textResponse);
   } catch (e) {
-    console.error('❌ [TasksRewardBot] فشل تحليل JSON:', e.message);
     throw new Error('الرد ليس JSON صالحًا');
   }
 
@@ -44,14 +37,13 @@ async function fetchNextVideo(userId) {
     throw new Error('لا توجد فيديوهات متاحة');
   }
 
-  console.log('✅ [TasksRewardBot] تم جلب الفيديو:', data[0]);
   return data[0];
 }
 
 async function openYouTubeSearch(keywords) {
   const query = encodeURIComponent(keywords.join(' '));
   const url = `https://www.youtube.com/results?search_query=${query}`;
-  console.log('🔍 [TasksRewardBot] فتح بحث يوتيوب:', url);
+  console.log('🔍 [TasksRewardBot] فتح بحث:', url);
   await chrome.tabs.create({ url, active: false });
 }
 
@@ -106,41 +98,38 @@ async function startAutomation() {
   const userId = cfg.userId;
 
   if (!userId) {
-    console.warn('⚠️ [TasksRewardBot] User ID غير محدد');
     chrome.runtime.sendMessage({ action: 'show_message', message: '❌ User ID مطلوب!', type: 'error' });
     return;
   }
 
-  console.log('🚀 [TasksRewardBot] بدء التشغيل لـ User ID:', userId);
   await storageSet({ automationRunning: true });
   chrome.runtime.sendMessage({ action: 'update_status', status: 'Running' });
 
   try {
     const video = await fetchNextVideo(userId);
 
-    // === استخراج معرّف الفيديو بأمان ===
+    // === استخراج video_id من video_url بأمان ===
     let videoId = null;
 
-    if (video.video_id && typeof video.video_id === 'string' && video.video_id.trim() !== '') {
-      videoId = video.video_id.trim();
-    } else if (video.video_url && typeof video.video_url === 'string') {
-      const match = video.video_url.match(/[?&]v=([^&#]*)/);
+    if (video.video_url && typeof video.video_url === 'string') {
+      const cleanUrl = video.video_url.trim(); // ✅ إزالة المسافات
+      // يدعم /watch?v= و /shorts/
+      const match = cleanUrl.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/);
       if (match && match[1]) {
         videoId = match[1];
       }
     }
 
     if (!videoId) {
-      throw new Error('لا يمكن تحديد معرّف الفيديو (video_id)');
+      throw new Error('لا يمكن استخراج معرّف الفيديو من video_url');
     }
 
     const keywords = [videoId];
-    console.log('🔍 [TasksRewardBot] الكلمات المفتاحية:', keywords);
-
+    console.log('✅ [TasksRewardBot] video_id المستخرج:', videoId);
     await openYouTubeSearch(keywords);
-    chrome.runtime.sendMessage({ action: 'show_message', message: `✅ بدأ البحث عن الفيديو`, type: 'success' });
+    chrome.runtime.sendMessage({ action: 'show_message', message: '✅ بدأ البحث عن الفيديو', type: 'success' });
   } catch (err) {
-    console.error('🛑 [TasksRewardBot] فشل التشغيل:', err.message);
+    console.error('🛑 [TasksRewardBot] خطأ:', err.message);
     chrome.runtime.sendMessage({ action: 'show_message', message: `❌ ${err.message}`, type: 'error' });
     await storageSet({ automationRunning: false });
     chrome.runtime.sendMessage({ action: 'update_status', status: 'Idle' });

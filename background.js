@@ -71,10 +71,10 @@ async function startAutomation() {
 }
 
 async function handleReport({ videoId, watchedSeconds, source }) {
-  const cfg = await storageGet(['userId', 'apiBaseUrl', 'callbackSecret']);
-  const userId = cfg.userId;
-  const apiBase = (cfg.apiBaseUrl || DEFAULT_API_BASE).trim();
-  const secret = cfg.callbackSecret?.trim() || '';
+ const cfg = await storageGet(['userId']);
+const userId = cfg.userId;
+const apiBase = 'https://perceptive-victory-production.up.railway.app'; // ثابت
+const secret = ''; // أو ضع القيمة الفعلية إذا كنت تستخدم HMAC داخليًا
 
   if (!userId) throw new Error('لم يتم تعيين معرّف المستخدم');
 

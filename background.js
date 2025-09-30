@@ -15,9 +15,7 @@ function storageSet(obj) {
   return new Promise(resolve => chrome.storage.local.set(obj, resolve));
 }
 
-// --- دوال موجودة (fetchNextVideo, tryFallback, handleReport) ---
-// (استخدم نفس الدوال من النسخة الحالية — فهي تعمل بشكل صحيح)
-
+// جلب فيديو من السيرفر (تُستخدم داخل worker.html)
 async function fetchNextVideo(userId) {
   const url = `${API_BASE}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
   const res = await fetch(url);
@@ -30,6 +28,7 @@ async function fetchNextVideo(userId) {
   return data[0];
 }
 
+// محاولة فتح مصدر بديل
 async function tryFallback(videoId, tabId) {
   const stored = await storageGet(`redirect_history_${videoId}`);
   const history = stored[`redirect_history_${videoId}`] || [];
@@ -46,6 +45,7 @@ async function tryFallback(videoId, tabId) {
   return true;
 }
 
+// إرسال تقرير المشاهدة
 async function handleReport({ videoId, watchedSeconds, source }) {
   const cfg = await storageGet(['userId']);
   const userId = cfg.userId;
@@ -69,25 +69,33 @@ async function handleReport({ videoId, watchedSeconds, source }) {
   chrome.runtime.sendMessage({ action: 'update_balance', balance });
 }
 
-// --- دالة جديدة: فتح worker.html ---
-async function startWorker(userId) {
+// بدء التشغيل: فتح worker.html مع user_id
+async function startAutomation(userId) {
+  if (!userId || userId.trim() === '') {
+    throw new Error('User ID غير محدد');
+  }
+  // حفظ userId للاستخدام لاحقًا (مثل في handleReport)
+  await storageSet({ userId, automationRunning: true });
   const url = chrome.runtime.getURL('worker.html') + `?user_id=${encodeURIComponent(userId)}`;
   await chrome.tabs.create({ url, active: true });
 }
 
+// مستمع الرسائل
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'start_automation') {
-    startWorker(message.userId).then(() => sendResponse({ ok: true })).catch(e => {
+    startAutomation(message.userId).then(() => sendResponse({ ok: true })).catch(e => {
       sendResponse({ ok: false, error: e.message });
     });
     return true;
   }
+
   if (message.action === 'report_view') {
     handleReport(message).then(() => sendResponse({ ok: true })).catch(e => {
       sendResponse({ ok: false, error: e.message });
     });
     return true;
   }
+
   if (message.action === 'try_fallback_redirect') {
     tryFallback(message.videoId, sender.tab?.id).then(ok => {
       sendResponse({ ok });

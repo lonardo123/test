@@ -1,25 +1,55 @@
-<!doctype html>
-<html lang="ar">
+<!DOCTYPE html>
+<html>
 <head>
   <meta charset="utf-8">
-  <title>إعدادات TasksRewardBot</title>
   <style>
-    body{font-family:Arial,sans-serif;direction:rtl;padding:20px;max-width:500px;margin:0 auto}
-    label{display:block;margin:12px 0 6px;font-weight:bold}
-    input{width:100%;padding:8px;box-sizing:border-box}
-    button{padding:10px 20px;margin:8px 5px;background:#4CAF50;color:white;border:none;cursor:pointer}
-    button:hover{opacity:0.9}
+    body { width: 300px; padding: 15px; font-family: Arial, sans-serif; background: #2c2c2c; color: white; margin: 0; }
+    h3 { margin: 0 0 10px; text-align: center; }
+    .tab-container { display: flex; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 15px; }
+    .tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; background: #444; }
+    .tab.active { background: #555; }
+    .content { display: none; }
+    .content.active { display: block; }
+    .info-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #444; }
+    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+    .status { margin-top: 10px; padding: 8px; background: #444; border-radius: 4px; text-align: center; }
   </style>
 </head>
 <body>
-  <h2>⚙️ إعدادات TasksRewardBot</h2>
-  <label>معرّف المستخدم (User ID):</label>
-  <input id="userId" type="text" placeholder="مثال: 6946824361">
+  <h3>TasksRewardBot - Chrome v1.0</h3>
 
-  <div>
-    <button id="save">💾 حفظ</button>
+  <div class="tab-container">
+    <div class="tab active" data-tab="main">Main</div>
+    <div class="tab" data-tab="settings">Settings</div>
   </div>
 
-  <script src="options.js"></script>
+  <div class="content active" id="main">
+    <div class="info-item">
+      <span>User:</span>
+      <span id="userIdDisplay">-</span>
+    </div>
+    <div class="info-item">
+      <span>Balance:</span>
+      <span id="balanceDisplay">0.00</span>
+    </div>
+    <div class="info-item">
+      <span>Status:</span>
+      <span id="statusDisplay">Idle</span>
+    </div>
+    <button id="startBtn">Start Worker</button>
+    <div class="status" id="message"></div>
+  </div>
+
+  <div class="content" id="settings">
+    <div class="info-item">
+      <span>User ID:</span>
+      <input type="text" id="userIdInput" style="width:100%;background:#333;color:white;border:1px solid #555;padding:5px;">
+    </div>
+    <button id="saveBtn">Save Settings</button>
+    <!-- مساحة عرض الرسالة -->
+    <div id="settingsMessage" style="margin-top:10px; padding:8px; border-radius:4px; text-align:center; display:none;"></div>
+  </div>
+
+  <script src="popup.js"></script>
 </body>
 </html>

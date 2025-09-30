@@ -1,5 +1,23 @@
 'use strict';
+function setIcon(state) {
+  const iconPath = state === 'running' ? {
+    16: 'icons/icon16-pause.png',
+    48: 'icons/icon48-pause.png',
+    128: 'icons/icon128-pause.png'
+  } : {
+    16: 'icons/icon16.png',
+    48: 'icons/icon48.png',
+    128: 'icons/icon128.png'
+  };
+  chrome.action.setIcon({ path: iconPath });
+}
 
+// استدعاء الدالة عند بدء أو إيقاف التشغيل
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.automationRunning) {
+    setIcon(changes.automationRunning.newValue ? 'running' : 'idle');
+  }
+});
 const EXTERNAL_SOURCES = [
   { name: 'Facebook', prefix: 'https://l.facebook.com/l.php?u=' },
   { name: 'Instagram', prefix: 'https://l.instagram.com/?u=' },

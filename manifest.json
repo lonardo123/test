@@ -1,49 +1,46 @@
 {
   "manifest_version": 3,
-  "name": "TasksRewardBot - اربح من المشاهدة (متكاملة مع مشروعك)",
-  "version": "1.2",
-  "description": "شاهد فيديوهات واربح رصيدًا — قابل للتوصيل بسهولة مع سيرفرك عبر إعداد API Base URL في الإعدادات.",
+  "name": "TasksRewardBot - اربح من المشاهدة",
+  "short_name": "TasksRewardBot",
+  "version": "1.0.0",
+  "description": "شاهد فيديوهات يوتيوب تلقائياً واربح — تدعم مصادر متعددة (YouTube, Facebook, Instagram, Google).",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "storage",
     "tabs",
+    "scripting",
     "notifications",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
   "host_permissions": [
     "https://www.youtube.com/*",
-    "https://youtube.com/*",
-    "https://m.youtube.com/*",
-    "http://localhost/*",
-    "http://localhost:3000/*",
-    "https://*/*",
-    "http://*/*"
-  ],
-  "content_scripts": [
-    {
-      "matches": [
-        "https://www.youtube.com/watch*",
-        "https://youtube.com/watch*",
-        "https://m.youtube.com/watch*",
-        "https://www.youtube.com/shorts/*",
-        "https://youtube.com/shorts/*"
-      ],
-      "js": [
-        "content.js"
-      ],
-      "run_at": "document_end"
-    }
+    "https://l.facebook.com/*",
+    "https://l.instagram.com/*",
+    "https://www.google.com/*",
+    "https://perceptive-victory-production.up.railway.app/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
-  "options_ui": {
-    "page": "options.html",
-    "open_in_tab": true
+  "options_page": "options.html",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TasksRewardBot"
   },
-  "icons": {
-    "16": "icon16.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
-  }
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/watch*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/results*"],
+      "js": ["search_helper.js"],
+      "run_at": "document_idle"
+    }
+  ]
 }

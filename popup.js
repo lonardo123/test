@@ -23,13 +23,33 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('saveBtn').addEventListener('click', () => {
-    const userId = userIdInput.value.trim();
-    if (!userId) return alert('أدخل User ID');
-    chrome.storage.local.set({ userId }, () => {
-      userIdDisplay.textContent = userId;
-      alert('تم الحفظ!');
-    });
+  const userId = userIdInput.value.trim();
+  const messageEl = document.getElementById('settingsMessage');
+
+  if (!userId) {
+    messageEl.textContent = '❌ يرجى إدخال User ID';
+    messageEl.style.backgroundColor = '#ff5555';
+    messageEl.style.color = 'white';
+    messageEl.style.display = 'block';
+    return;
+  }
+
+  chrome.storage.local.set({ userId }, () => {
+    // تحديث العرض في تبويب Main
+    document.getElementById('userIdDisplay').textContent = userId;
+    
+    // عرض رسالة النجاح
+    messageEl.textContent = '✅ تم الحفظ بنجاح!';
+    messageEl.style.backgroundColor = '#55aa55';
+    messageEl.style.color = 'white';
+    messageEl.style.display = 'block';
+
+    // إخفاء الرسالة تلقائيًا بعد 3 ثوانٍ
+    setTimeout(() => {
+      messageEl.style.display = 'none';
+    }, 3000);
   });
+});
 
   startBtn.addEventListener('click', () => {
     chrome.storage.local.get(['automationRunning'], (data) => {

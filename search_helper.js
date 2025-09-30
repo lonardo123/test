@@ -1,31 +1,72 @@
 (async () => {
-  const result = await new Promise(r => chrome.storage.local.get(['automationRunning'], r));
+  'use strict';
+
+  // تحقق مما إذا كان التشغيل التلقائي مفعلًا
+  const result = await chrome.storage.local.get(['automationRunning']);
   if (!result.automationRunning) return;
 
+  console.log('TasksRewardBot: البحث التلقائي مفعل — جاري محاولة فتح أول فيديو...');
+
+  // دالة للعثور على أول رابط فيديو
   function findFirstVideoLink() {
     const links = document.querySelectorAll('a[href^="/watch?v="]');
-    return links.length ? links[0] : null;
+    for (const link of links) {
+      // تأكد أن الرابط مرئي وليس جزءًا من إعلان أو توصية جانبية
+      const rect = link.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && rect.top >= 0) {
+        return link;
+      }
+    }
+    return null;
   }
 
-  const tryClick = () => {
+  // محاولة الضغط على أول فيديو
+  function tryClickVideo() {
     const link = findFirstVideoLink();
     if (link) {
+      console.log('TasksRewardBot: تم العثور على فيديو — جاري الفتح...');
       link.click();
-    } else {
-      // لم يُعثر على فيديو → طلب fallback من الخلفية
-      const urlParams = new URLSearchParams(window.location.search);
-      const query = urlParams.get('search_query');
-      const keywords = query ? decodeURIComponent(query).split(' ') : [];
-      // استخرج videoId من الكلمات (افتراض أن أول كلمة هي videoId — أو سيتم تحسينه لاحقًا)
-      const videoId = keywords[0] || 'UNKNOWN';
-      chrome.runtime.sendMessage({
-        action: 'try_fallback_redirect',
-        videoId,
-        keywords
-      });
+      return true;
     }
-  };
+    return false;
+  }
 
-  setTimeout(tryClick, 1500);
-  setTimeout(tryClick, 3500);
+  // استخراج video_id من رابط البحث (للاستخدام في fallback)
+  function getVideoIdFromQuery() {
+    try {
+      const url = new URL(window.location.href);
+      const query = url.searchParams.get('search_query');
+      if (query) {
+        // افترض أن أول كلمة هي video_id (أو استخدم منطقًا أذكى لاحقًا)
+        return query.split(' ')[0] || null;
+      }
+    } catch (e) {
+      console.warn('فشل استخراج video_id من الرابط');
+    }
+    return null;
+  }
+
+  // المحاولة الأولى بعد 1.5 ثانية
+  setTimeout(() => {
+    if (tryClickVideo()) return;
+
+    // المحاولة الثانية بعد 3 ثوانٍ
+    setTimeout(() => {
+      if (tryClickVideo()) return;
+
+      // لم يُعثر على فيديو → طلب fallback
+      console.warn('TasksRewardBot: لم يُعثر على فيديو في نتائج البحث — جاري طلب مصدر بديل...');
+      
+      const videoId = getVideoIdFromQuery();
+      if (videoId) {
+        chrome.runtime.sendMessage({
+          action: 'try_fallback_redirect',
+          videoId: videoId,
+          keywords: decodeURIComponent(window.location.search.split('search_query=')[1]?.split('&')[0] || '').split(' ')
+        });
+      } else {
+        console.error('TasksRewardBot: لا يمكن تحديد video_id للـ fallback');
+      }
+    }, 1500);
+  }, 1500);
 })();

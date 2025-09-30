@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 250px; padding: 15px; font-family: Arial; direction: rtl; }
+    h3 { margin: 0 0 10px; color: #2c3e50; }
+    button { width: 100%; padding: 8px; margin: 5px 0; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #2980b9; }
+  </style>
+</head>
+<body>
+  <h3>TasksRewardBot</h3>
+  <button id="openOptions">⚙️ الإعدادات</button>
+  <button id="start">▶️ ابدأ</button>
+  <button id="stop">⏹️ إيقاف</button>
+
+  <script>
+    document.getElementById('openOptions').onclick = () => chrome.runtime.openOptionsPage();
+    document.getElementById('start').onclick = () => {
+      chrome.runtime.sendMessage({ action: 'start_automation' });
+      window.close();
+    };
+    document.getElementById('stop').onclick = () => {
+      chrome.storage.local.set({ automationRunning: false });
+      window.close();
+    };
+  </script>
+</body>
+</html>

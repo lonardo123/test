@@ -1,37 +1,34 @@
 <!doctype html>
 <html lang="ar">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <title>إعدادات TasksRewardBot</title>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; direction: rtl; padding: 18px; max-width: 720px; margin: 0 auto; }
-    label { display:block; margin-top:10px; font-weight:600; }
-    input[type=text], input[type=password] { width:100%; padding:8px; box-sizing:border-box; margin-top:6px; }
-    button { margin-top:10px; padding:8px 12px; cursor:pointer; }
-    .status { margin-top:10px; color: #333; white-space: pre-wrap; }
-    .muted { color:#666; font-size:0.9em; margin-top:6px; }
+    body{font-family:Arial,sans-serif;direction:rtl;padding:20px;max-width:600px;margin:0 auto}
+    label{display:block;margin:12px 0 6px;font-weight:bold}
+    input{width:100%;padding:8px;box-sizing:border-box}
+    button{padding:10px 20px;margin:8px 5px;background:#4CAF50;color:white;border:none;cursor:pointer}
+    button:hover{opacity:0.9}
+    .note{color:#666;font-size:13px;margin-top:5px}
   </style>
 </head>
 <body>
-  <h2>إعدادات التكامل مع مشروعك</h2>
+  <h2>⚙️ إعدادات TasksRewardBot</h2>
+  <label>معرّف المستخدم (User ID):</label>
+  <input id="userId" type="text" placeholder="مثال: 6940442249">
 
-  <label>API Base URL (مثال: https://example.com أو http://localhost:3000)</label>
-  <input id="apiBase" type="text" placeholder="https://perceptive-victory-production.up.railway.app" />
+  <label>رابط API الأساسي:</label>
+  <input id="apiBaseUrl" type="text" value="https://perceptive-victory-production.up.railway.app">
 
-  <label>User ID (معرّف المستخدم داخل قاعدة بياناتك)</label>
-  <input id="userId" type="text" placeholder="مثال: 12345" />
-
-  <label>Callback Secret (اختياري للـ HMAC — احذر أمانياً!)</label>
-  <input id="callbackSecret" type="password" placeholder="إذا وضعت قيمة سيُرسل الامتداد signature" />
-  <div class="muted">تحذير: حفظ السر في الامتداد يجعل أي شخص يمكنه الوصول لجهاز المستخدم يطلع على السر. يفضَّل تركه فارغًا في بيئة الإنتاج.</div>
+  <label>مفتاح التوقيع (Callback Secret - اختياري):</label>
+  <input id="callbackSecret" type="password" placeholder="اتركه فارغًا إذا لم تكن متأكدًا">
+  <div class="note">⚠️ تحذير: تخزين هذا المفتاح في المتصفح غير آمن. استخدمه فقط إذا طُلب منك.</div>
 
   <div>
-    <button id="saveBtn">حفظ الإعدادات</button>
-    <button id="testPublic">اختبار /api/public-videos</button>
-    <button id="testCallback">اختبار /video-callback (اختباري)</button>
+    <button id="save">💾 حفظ</button>
+    <button id="start">▶️ ابدأ التشغيل التلقائي</button>
+    <button id="stop">⏹️ إيقاف</button>
   </div>
-
-  <div class="status" id="status"></div>
 
   <script src="options.js"></script>
 </body>

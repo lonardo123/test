@@ -15,50 +15,30 @@ function storageSet(obj) {
   return new Promise(resolve => chrome.storage.local.set(obj, resolve));
 }
 
-// تحديث حالة الـ Popup
-function updatePopupStatus(status, balance = null, message = '', type = 'info') {
-  chrome.runtime.sendMessage({
-    action: 'update_status',
-    status,
-    balance,
-    message,
-    type
-  });
-}
-
-// جلب فيديو مؤهل من السيرفر
 async function fetchNextVideo(userId) {
   const res = await fetch(`${API_BASE}/api/public-videos?user_id=${encodeURIComponent(userId)}`);
-  if (!res.ok) throw new Error('فشل جلب الفيديو من السيرفر');
+  if (!res.ok) throw new Error('فشل جلب الفيديو');
   const data = await res.json();
   if (!Array.isArray(data) || data.length === 0) {
-    throw new Error('لا توجد فيديوهات متاحة للمشاهدة');
+    throw new Error('لا توجد فيديوهات متاحة');
   }
-  return data[0]; // خذ أول فيديو
+  return data[0];
 }
 
-// فتح بحث يوتيوب
 async function openYouTubeSearch(keywords) {
   const query = encodeURIComponent(keywords.join(' '));
   const url = `https://www.youtube.com/results?search_query=${query}`;
   await chrome.tabs.create({ url, active: false });
 }
 
-// محاولة فتح رابط بديل (Fallback)
 async function tryFallback(videoId, tabId) {
   const stored = await storageGet(`redirect_history_${videoId}`);
   const history = stored[`redirect_history_${videoId}`] || [];
-
   const nextSource = EXTERNAL_SOURCES.find(s => !history.includes(s.name));
   if (!nextSource) return false;
-
   const ytUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&__source=${encodeURIComponent(nextSource.name)}`;
   const wrappedUrl = `${nextSource.prefix}${encodeURIComponent(ytUrl)}`;
-
-  await storageSet({
-    [`redirect_history_${videoId}`]: [...history, nextSource.name]
-  });
-
+  await storageSet({ [`redirect_history_${videoId}`]: [...history, nextSource.name] });
   if (tabId) {
     await chrome.tabs.update(tabId, { url: wrappedUrl });
   } else {
@@ -67,23 +47,19 @@ async function tryFallback(videoId, tabId) {
   return true;
 }
 
-// معالجة تقرير المشاهدة
 async function handleReport({ videoId, watchedSeconds, source }) {
   const cfg = await storageGet(['userId']);
   const userId = cfg.userId;
   if (!userId) throw new Error('User ID غير متوفر');
-
   const params = new URLSearchParams({
     user_id: userId,
     video_id: videoId,
     watched_seconds: String(Math.floor(watchedSeconds || 0)),
     source: source || 'YouTube'
   });
-
   const url = `${API_BASE}/video-callback?${params.toString()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`السيرفر رفض الطلب: ${res.status}`);
-
   const data = await res.json().catch(() => ({}));
   let balance = null;
   if (typeof data.reward !== 'undefined') {
@@ -91,36 +67,31 @@ async function handleReport({ videoId, watchedSeconds, source }) {
     balance = current + data.reward;
     await storageSet({ balance });
   }
-
-  updatePopupStatus('Running', balance, `✅ تم إضافة المكافأة (${data.reward || '—'})`, 'success');
+  // تحديث الـ popup
+  chrome.runtime.sendMessage({ action: 'update_balance', balance });
 }
 
-// بدء التشغيل التلقائي
 async function startAutomation() {
   const cfg = await storageGet(['userId']);
   const userId = cfg.userId;
-
   if (!userId) {
-    updatePopupStatus('Idle', null, '❌ يرجى إدخال User ID أولاً', 'error');
+    chrome.runtime.sendMessage({ action: 'show_message', message: '❌ User ID مطلوب!', type: 'error' });
     return;
   }
-
   await storageSet({ automationRunning: true });
-  updatePopupStatus('Running', null, '🔄 جارٍ جلب الفيديو...', 'info');
-
+  chrome.runtime.sendMessage({ action: 'update_status', status: 'Running' });
   try {
     const video = await fetchNextVideo(userId);
     const keywords = video.keywords || [video.video_id];
     await openYouTubeSearch(keywords);
-    updatePopupStatus('Running', null, `🔍 بدأ البحث عن: ${keywords.join(' ')}`, 'success');
   } catch (err) {
-    console.error('خطأ في التشغيل:', err);
-    updatePopupStatus('Idle', null, `❌ ${err.message}`, 'error');
+    console.error('خطأ:', err);
+    chrome.runtime.sendMessage({ action: 'show_message', message: `❌ ${err.message}`, type: 'error' });
     await storageSet({ automationRunning: false });
+    chrome.runtime.sendMessage({ action: 'update_status', status: 'Idle' });
   }
 }
 
-// مستمع الرسائل
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'start_automation') {
     startAutomation().then(() => sendResponse({ ok: true })).catch(e => {
@@ -128,22 +99,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true;
   }
-
   if (message.action === 'report_view') {
     handleReport(message).then(() => sendResponse({ ok: true })).catch(e => {
       sendResponse({ ok: false, error: e.message });
     });
     return true;
   }
-
   if (message.action === 'try_fallback_redirect') {
     tryFallback(message.videoId, sender.tab?.id).then(ok => {
       sendResponse({ ok });
     });
     return true;
-  }
-
-  if (message.action === 'update_status') {
-    // هذا مخصص للـ popup فقط
   }
 });

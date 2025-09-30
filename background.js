@@ -56,25 +56,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function startAutomation() {
   await storageSet({ automationRunning: true });
-  // ابدأ بتشغيل أول فيديو (يجب أن يُطلب من السيرفر لاحقًا، لكن هنا نبدأ بتشغيل آلية البحث)
-  const cfg = await storageGet(['userId']);
-  if (!cfg.userId) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon48.png',
-      title: 'TasksRewardBot',
-      message: 'يرجى إدخال معرّف المستخدم في الإعدادات أولاً.'
-    });
-    return;
-  }
-  // سيتم تشغيل الفيديو الأول عبر popup أو آلية خارجية
+  // Update popup status
+  updatePopupStatus('Running');
+  // You can add logic to start searching here
 }
 
 async function handleReport({ videoId, watchedSeconds, source }) {
- const cfg = await storageGet(['userId']);
-const userId = cfg.userId;
-const apiBase = 'https://perceptive-victory-production.up.railway.app'; // ثابت
-const secret = ''; // أو ضع القيمة الفعلية إذا كنت تستخدم HMAC داخليًا
+  const cfg = await storageGet(['userId', 'apiBaseUrl', 'callbackSecret']);
+  const userId = cfg.userId;
+  const apiBase = (cfg.apiBaseUrl || DEFAULT_API_BASE).trim();
+  const secret = cfg.callbackSecret?.trim() || '';
 
   if (!userId) throw new Error('لم يتم تعيين معرّف المستخدم');
 
@@ -99,20 +90,20 @@ const secret = ''; // أو ضع القيمة الفعلية إذا كنت تست
       const txt = await res.text().catch(() => '');
       throw new Error(`خطأ من السيرفر: ${res.status} ${txt}`);
     }
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon48.png',
-      title: 'TasksRewardBot',
-      message: `✅ تم إرسال مشاهدة الفيديو ${videoId}\nالمصدر: ${source}`
-    });
+    // Update balance (if server returns it)
+    const data = await res.json().catch(() => null);
+    let balance = null;
+    if (data && typeof data.reward !== 'undefined') {
+      // Update balance in storage
+      const currentBalance = (await storageGet('balance')).balance || 0;
+      balance = currentBalance + data.reward;
+      await storageSet({ balance });
+    }
+    // Notify popup
+    updatePopupStatus('Running', balance, `✅ تم إرسال مشاهدة الفيديو ${videoId}`, 'success');
   } catch (err) {
     console.error('فشل إرسال التقرير:', err);
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icons/icon48.png',
-      title: 'TasksRewardBot - خطأ',
-      message: `فشل إرسال المشاهدة: ${err.message}`
-    });
+    updatePopupStatus('Running', null, `❌ فشل إرسال المشاهدة: ${err.message}`, 'error');
     throw err;
   }
 }
@@ -140,4 +131,27 @@ async function tryFallbackRedirect(videoId, keywords, tabId) {
   }
 
   return { ok: true, source: nextSource.name };
+}
+
+// Function to update popup status
+function updatePopupStatus(status, balance = null, message = '', type = 'info') {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs.length > 0) {
+      chrome.scripting.executeScript({
+        target: { tabId: tabs[0].id },
+        func: (status, balance, message, type) => {
+          chrome.runtime.sendMessage({
+            action: 'update_status',
+            status,
+            balance,
+            message,
+            type
+          });
+        },
+        args: [status, balance, message, type]
+      });
+    }
+  });
+  // Also update storage
+  chrome.storage.local.set({ automationRunning: status === 'Running' });
 }

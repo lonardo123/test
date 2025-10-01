@@ -1,111 +1,120 @@
-'use strict';
+(async () => {
+  'use strict';
 
-// =====================================
-// التعامل مع صفحات فيديوهات يوتيوب
-// =====================================
+  // إنشاء شريط الإشعارات في أسفل الصفحة
+  let notificationBar = document.createElement('div');
+  notificationBar.style.cssText = `
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #222;
+    color: white;
+    padding: 8px 16px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
+  `;
+  const messageSpan = document.createElement('span');
+  messageSpan.id = 'notificationMessage';
+  messageSpan.textContent = 'جارٍ البحث عن الفيديو...';
+  notificationBar.appendChild(messageSpan);
+  document.body.appendChild(notificationBar);
 
-(function() {
+  function updateNotification(msg) {
+    if (messageSpan) messageSpan.textContent = msg;
+  }
 
-  // دالة استخراج videoId من رابط الصفحة
-  function getVideoIdFromUrl(url) {
-    if (!url) return null;
+  const result = await chrome.storage.local.get(['automationRunning', 'currentVideo']);
+  if (!result.automationRunning || !result.currentVideo) {
+    updateNotification('🔹 لم يتم تفعيل البحث التلقائي.');
+    return;
+  }
+
+  const targetVideo = result.currentVideo;
+  const targetVideoUrl = targetVideo.url || '';
+  const targetVideoId = targetVideo.videoId || null;
+
+  console.log('TasksRewardBot: البحث التلقائي مفعل');
+
+  function extractIdFromHref(href) {
+    if (!href) return null;
     try {
-      const u = new URL(url);
-      return u.searchParams.get('v') || null;
-    } catch (e) {
-      // محاولة regex للروابط القصيرة أو embed
-      const m = url.match(/(?:v=|\/)([A-Za-z0-9_-]{8,11})(?:\b|$)/);
-      return m && m[1] ? m[1] : null;
-    }
+      const m = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
+      return m ? m[1] : null;
+    } catch { return null; }
   }
 
-  // دالة تحديث شريط التقدم والإشعار
-  function updateNotification(message, progress = 0) {
-    let notif = document.getElementById('notificationBar');
-    if (!notif) {
-      notif = document.createElement('div');
-      notif.id = 'notificationBar';
-      notif.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;background:#222;color:white;padding:8px 16px;font-family:Arial,sans-serif;font-size:14px;z-index:9999;display:flex;align-items:center;gap:8px;';
-      const icon = document.createElement('span');
-      icon.textContent = '@TasksRewardBot:';
-      icon.style.fontWeight = 'bold';
-      icon.style.color = '#007bff';
-      notif.appendChild(icon);
-      const msgSpan = document.createElement('span');
-      msgSpan.id = 'notificationMessage';
-      notif.appendChild(msgSpan);
-      const bar = document.createElement('div');
-      bar.id = 'progressBar';
-      bar.style.cssText = 'height:4px;background:#333;border-radius:2px;margin-top:8px;width:100%;overflow:hidden;';
-      const fill = document.createElement('div');
-      fill.id = 'progressFill';
-      fill.style.cssText = 'height:100%;background:#ff5555;width:0%;transition:width 0.3s ease;';
-      bar.appendChild(fill);
-      notif.appendChild(bar);
-      document.body.appendChild(notif);
-    }
-    document.getElementById('notificationMessage').textContent = message;
-    document.getElementById('progressFill').style.width = `${progress}%`;
+  function collectCandidateLinks() {
+    const selectors = [
+      'a#video-title',
+      'a[href*="/watch?v="]',
+      'ytd-video-renderer a#thumbnail',
+      'ytd-video-renderer a#video-title'
+    ];
+    const set = new Set();
+    const arr = [];
+    selectors.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => {
+        if (el && el.href && !set.has(el.href)) {
+          set.add(el.href);
+          arr.push(el);
+        }
+      });
+    });
+    return arr;
   }
 
-  // دالة تتبع الفيديو
-  function trackVideoPlayback() {
-    const video = document.querySelector('video');
-    if (!video) return;
-
-    const videoId = getVideoIdFromUrl(window.location.href);
-    if (!videoId) return;
-
-    let watchStartTime = Date.now();
-    let durationRequired = 50; // 50 ثانية كحد أدنى
-
-    const interval = setInterval(() => {
-      const currentTime = video.currentTime || 0;
-      const duration = video.duration || 0;
-      const threshold = Math.max(durationRequired * 0.95, duration * 0.95);
-
-      if (currentTime >= threshold) {
-        const watchedSeconds = Math.floor((Date.now() - watchStartTime) / 1000);
-        chrome.runtime.sendMessage({
-          action: 'report_view',
-          videoId: videoId,
-          watchedSeconds: watchedSeconds,
-          source: 'YouTube'
-        });
-        updateNotification('✅ تم إرسال المشاهدة', 100);
-        clearInterval(interval);
-      }
-    }, 1000);
-  }
-
-  // دالة لتخطي الإعلان
-  function setupAdSkip() {
-    const interval = setInterval(() => {
-      const skipBtn = document.querySelector('.ytp-ad-skip-button, .ytp-skip-button');
-      if (skipBtn && skipBtn.offsetParent !== null) {
+  function findAndClickTarget() {
+    const links = collectCandidateLinks();
+    for (const link of links) {
+      const id = extractIdFromHref(link.href);
+      if ((targetVideoId && id === targetVideoId) || (targetVideoUrl && link.href.includes(targetVideoUrl))) {
         try {
-          skipBtn.click();
-          updateNotification('✅ تم تخطي الإعلان', 100);
-          clearInterval(interval);
-        } catch (e) {
-          console.error('فشل تخطي الإعلان:', e);
+          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          updateNotification('✅ تم العثور على الفيديو المطلوب والنقر عليه.');
+          console.log('TasksRewardBot: تم النقر على الفيديو المطلوب.');
+          return true;
+        } catch {
+          try { link.click(); updateNotification('✅ تم العثور على الفيديو والنقر عليه.'); return true; } catch {}
         }
       }
-    }, 1000);
+    }
+    return false;
   }
 
-  // بدء عملية التتبع والمراقبة
-  function init() {
-    updateNotification('جارٍ البحث عن الفيديو...', 0);
-    setupAdSkip();
-    trackVideoPlayback();
+  function getSearchKeywordsArray() {
+    try {
+      const u = new URL(window.location.href);
+      const q = u.searchParams.get('search_query') || '';
+      return decodeURIComponent(q).split(/\s+/).filter(Boolean);
+    } catch { return []; }
   }
 
-  // تأكد من تحميل DOM
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  // تجربة البحث بعد تأخير قصير ثم إعادة المحاولة إذا لم يُعثر
+  setTimeout(() => {
+    updateNotification('🔹 البحث عن الفيديو...');
+    if (findAndClickTarget()) return;
 
+    setTimeout(() => {
+      updateNotification('🔹 إعادة محاولة العثور على الفيديو...');
+      if (findAndClickTarget()) return;
+
+      updateNotification('⚠️ لم يُعثر على الفيديو، التوجه إلى مصدر بديل...');
+      console.warn('TasksRewardBot: لم يُعثر على الفيديو، طلب فتح مصدر بديل.');
+
+      chrome.runtime.sendMessage({
+        action: 'try_fallback_redirect',
+        videoId: targetVideoId,
+        directUrl: targetVideoUrl,
+        keywords: getSearchKeywordsArray()
+      }, resp => {
+        console.log('TasksRewardBot: رد الخلفية على طلب fallback', resp);
+      });
+    }, 2500);
+  }, 1000);
 })();

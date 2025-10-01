@@ -1,23 +1,24 @@
 (async () => {
   'use strict';
 
-  // إنشاء شريط الإشعارات
+  // إنشاء شريط الإشعارات أسفل الصفحة (صغير الحجم)
   let notificationBar = document.createElement('div');
   notificationBar.style.cssText = `
     position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: #222;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    max-width: 300px;
+    background: rgba(0,0,0,0.8);
     color: white;
-    padding: 8px 16px;
+    padding: 4px 10px;
     font-family: Arial, sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.3);
+    border-radius: 4px;
+    text-align: center;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
   `;
   const messageSpan = document.createElement('span');
   messageSpan.id = 'notificationMessage';
@@ -29,9 +30,10 @@
     if (messageSpan) messageSpan.textContent = msg;
   }
 
+  // جلب حالة التشغيل والفيديو الحالي
   const result = await chrome.storage.local.get(['automationRunning', 'currentVideo']);
   if (!result.automationRunning || !result.currentVideo) {
-    updateNotification('🔹 لم يتم تفعيل البحث التلقائي.');
+    updateNotification('🔹 البحث التلقائي غير مفعل.');
     return;
   }
 
@@ -76,12 +78,12 @@
       if ((targetVideoId && id === targetVideoId) || (targetVideoUrl && link.href.includes(targetVideoUrl))) {
         try {
           link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          updateNotification('✅ تم العثور على الفيديو المطلوب والنقر عليه.');
+          updateNotification('✅ تم العثور على الفيديو والنقر عليه.');
           console.log('TasksRewardBot: تم النقر على الفيديو المطلوب.');
-          observer.disconnect(); // إيقاف المراقبة بعد العثور على الفيديو
+          observer.disconnect();
           return true;
         } catch {
-          try { link.click(); updateNotification('✅ تم العثور على الفيديو والنقر عليه.'); observer.disconnect(); return true; } catch {}
+          try { link.click(); updateNotification('✅ تم النقر على الفيديو المطلوب.'); observer.disconnect(); return true; } catch {}
         }
       }
     }
@@ -96,14 +98,14 @@
     } catch { return []; }
   }
 
-  // استخدام MutationObserver لمراقبة DOM ديناميكيًا
+  // مراقب DOM لملاحظة التحميل الديناميكي
   const observer = new MutationObserver(() => {
-    if (findAndClickTarget()) return;
+    updateNotification('🔄 البحث عن الفيديو...');
+    findAndClickTarget();
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // بعد مهلة 10 ثواني، إذا لم يُعثر على الفيديو، نطلب fallback
+  // محاولة fallback بعد 12 ثانية إذا لم يُعثر على الفيديو
   setTimeout(() => {
     if (findAndClickTarget()) return;
     updateNotification('⚠️ لم يُعثر على الفيديو، التوجه إلى مصدر بديل...');
@@ -115,5 +117,5 @@
       directUrl: targetVideoUrl,
       keywords: getSearchKeywordsArray()
     }, resp => { console.log('TasksRewardBot: رد الخلفية على طلب fallback', resp); });
-  }, 10000);
+  }, 12000);
 })();

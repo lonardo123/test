@@ -1,14 +1,13 @@
 (async () => {
   'use strict';
 
-  // شريط الإشعارات أسفل الصفحة (متوسط الحجم)
+  // شريط الإشعارات
   let notificationBar = document.createElement('div');
   notificationBar.style.cssText = `
     position: fixed;
     bottom: 15px;
     left: 50%;
     transform: translateX(-50%);
-    width: auto;
     max-width: 400px;
     background: rgba(0,0,0,0.85);
     color: white;
@@ -25,10 +24,7 @@
   messageSpan.textContent = '🔹 جارٍ البحث عن الفيديو...';
   notificationBar.appendChild(messageSpan);
   document.body.appendChild(notificationBar);
-
-  function updateNotification(msg) {
-    if (messageSpan) messageSpan.textContent = msg;
-  }
+  const updateNotification = msg => { if (messageSpan) messageSpan.textContent = msg; };
 
   // جلب بيانات الفيديو
   const result = await chrome.storage.local.get(['automationRunning', 'currentVideo']);
@@ -38,20 +34,19 @@
   }
 
   const targetVideo = result.currentVideo;
-  const targetVideoUrl = targetVideo.url || '';
-  const targetVideoId = targetVideo.videoId || null;
+  const targetVideoId = targetVideo.videoId;
+  const targetVideoUrl = targetVideo.url;
 
   console.log('TasksRewardBot: البحث التلقائي مفعل');
 
   // استخراج videoId من href
-  function extractIdFromHref(href) {
+  const extractIdFromHref = href => {
     if (!href) return null;
-    try {
-      const m = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
-      return m ? m[1] : null;
-    } catch { return null; }
-  }
+    const m = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
+    return m ? m[1] : null;
+  };
 
+  // جمع روابط الفيديوهات الظاهرة على الصفحة
   function collectCandidateLinks() {
     const selectors = [
       'a#video-title',
@@ -72,10 +67,12 @@
     return arr;
   }
 
+  // البحث عن الفيديو المطلوب
   function findAndClickTarget() {
     const links = collectCandidateLinks();
     for (const link of links) {
       const id = extractIdFromHref(link.href);
+      const title = link.textContent || '';
       if ((targetVideoId && id === targetVideoId) || (targetVideoUrl && link.href.includes(targetVideoUrl))) {
         try {
           link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
@@ -84,36 +81,33 @@
           clearInterval(scrollInterval);
           observer.disconnect();
           return true;
-        } catch {
-          try { link.click(); updateNotification('✅ تم النقر على الفيديو المطلوب.'); clearInterval(scrollInterval); observer.disconnect(); return true; } catch {}
-        }
+        } catch { try { link.click(); return true; } catch {} }
       }
     }
     return false;
   }
 
-  // الضغط على زر البحث بجانب المربع
+  // الضغط على زر البحث بجانب مربع البحث
   const searchBtn = document.querySelector('button#search-icon-legacy');
   if (searchBtn) {
     updateNotification('🔹 الضغط على زر البحث...');
     searchBtn.click();
   }
 
-  // التمرير للأسفل ثم للأعلى بشكل دوري لتحميل كل الفيديوهات
+  // التمرير التدريجي للأسفل لتحميل نتائج أكثر
   const scrollInterval = setInterval(() => {
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 2000);
+    window.scrollBy({ top: 500, behavior: 'smooth' });
     updateNotification('🔄 التمرير للعثور على الفيديو...');
     findAndClickTarget();
-  }, 5000);
+  }, 3000);
 
-  // مراقب DOM لملاحظة التحميل الديناميكي
+  // مراقب DOM لملاحظة التحميل الديناميكي للفيديوهات الجديدة
   const observer = new MutationObserver(() => {
     findAndClickTarget();
   });
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // fallback بعد 15 ثانية إذا لم يُعثر على الفيديو
+  // fallback بعد 20 ثانية إذا لم يُعثر على الفيديو
   setTimeout(() => {
     if (findAndClickTarget()) return;
     updateNotification('⚠️ لم يُعثر على الفيديو، التوجه إلى مصدر بديل...');
@@ -126,6 +120,6 @@
       directUrl: targetVideoUrl,
       keywords: (new URLSearchParams(window.location.search).get('search_query') || '').split(/\s+/).filter(Boolean)
     }, resp => { console.log('TasksRewardBot: رد الخلفية على طلب fallback', resp); });
-  }, 15000);
+  }, 20000);
 
 })();

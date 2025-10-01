@@ -31,7 +31,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // =============================
 // إعداد رابط API الأساسي
 // =============================
-// لاحظ أن الرابط فيه /api
 const API_BASE = 'https://perceptive-victory-production.up.railway.app/api';
 
 // =============================
@@ -83,12 +82,13 @@ async function startAutomation(userId) {
     throw new Error('لم يتم العثور على فيديوهات لهذا المستخدم');
   }
 
-  // اختيار أول فيديو كمثال (ممكن تعدلها لاحقًا)
+  // اختيار أول فيديو
   const video = videos[0];
   console.log('🎬 سيتم تشغيل الفيديو:', video);
 
-  // إنشاء تبويب worker وفتح صفحة worker.html
-  const url = chrome.runtime.getURL('worker.html') + `?user_id=${encodeURIComponent(userId)}`;
+  // تمرير بيانات الفيديو إلى worker.html
+  const videoData = encodeURIComponent(JSON.stringify(video));
+  const url = chrome.runtime.getURL('worker.html') + `?user_id=${encodeURIComponent(userId)}&video=${videoData}`;
   const tab = await chrome.tabs.create({ url, active: true });
 
   // حفظ الحالة
@@ -121,6 +121,7 @@ async function startAutomation(userId) {
     chrome.tabs.onRemoved.removeListener(onTabRemoved);
     chrome.windows.onRemoved.removeListener(onWindowRemoved);
     await storageSet({ automationRunning: false, workerTabId: null });
+    console.log('⏹ تم تنظيف الحالة بعد إغلاق التبويب أو النافذة.');
   }
 }
 
@@ -145,7 +146,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }).catch(e => {
       sendResponse({ ok: false, error: e.message });
     });
-    return true; // مطلوب عشان sendResponse غير متزامن
+    return true; // مطلوب لأن sendResponse غير متزامن
   }
 
   if (message.action === 'stop_automation') {

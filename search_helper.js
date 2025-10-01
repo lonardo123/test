@@ -2,7 +2,7 @@
   'use strict';
 
   // =============================
-  // إنشاء شريط إشعارات أسفل الصفحة
+  // شريط إشعارات أسفل الصفحة
   // =============================
   let notificationBar = null;
   function createNotificationBar() {
@@ -13,7 +13,7 @@
       bottom: 10px;
       left: 50%;
       transform: translateX(-50%);
-      width: 320px;
+      width: 300px;
       background: #222;
       color: white;
       padding: 6px 12px;
@@ -41,65 +41,40 @@
   }
 
   const targetVideo = result.currentVideo;
-  const targetVideoId = targetVideo.videoId || (function() {
-    try {
-      const u = new URL(targetVideo.url);
-      return u.searchParams.get('v') || null;
-    } catch (e) {
-      return null;
-    }
-  })();
+  const targetVideoId = targetVideo.videoId;
+  if (!targetVideoId) {
+    updateNotification('❌ videoId غير موجود');
+    return;
+  }
 
   updateNotification('🔹 البحث عن الفيديو المستهدف...');
 
   // =============================
-  // دالة استخراج videoId من href
+  // استخراج videoId من أي href
   // =============================
   function extractVideoId(href) {
     if (!href) return null;
-    try {
-      const m1 = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
-      if (m1 && m1[1]) return m1[1];
-      const m2 = href.match(/\/watch\?v=([A-Za-z0-9_-]{11})/);
-      if (m2 && m2[1]) return m2[1];
-      const m3 = href.match(/\/shorts\/([A-Za-z0-9_-]{8,})/);
-      if (m3 && m3[1]) return m3[1];
-    } catch (e) {}
+    const patterns = [
+      /v=([A-Za-z0-9_-]{11})/,       // watch?v=
+      /\/shorts\/([A-Za-z0-9_-]{8,})/, // shorts
+      /\/embed\/([A-Za-z0-9_-]{11})/   // embed
+    ];
+    for (const p of patterns) {
+      const m = href.match(p);
+      if (m && m[1]) return m[1];
+    }
+    // fallback: أي videoId موجود داخل href
+    const fallback = href.match(/([A-Za-z0-9_-]{11})/);
+    if (fallback && fallback[1]) return fallback[1];
     return null;
   }
 
   // =============================
-  // تحريك الصفحة لأعلى وأسفل للتأكد من تحميل الفيديوهات
+  // جمع جميع الروابط المرئية
   // =============================
-  async function scrollPage() {
-    const scrollStep = 800;
-    const delay = 1500;
-    let lastHeight = 0;
-    let reachedBottom = false;
-
-    while (!reachedBottom) {
-      window.scrollBy(0, scrollStep);
-      await new Promise(r => setTimeout(r, delay));
-      const currentHeight = document.body.scrollHeight;
-      if (currentHeight === lastHeight) {
-        reachedBottom = true;
-      } else {
-        lastHeight = currentHeight;
-      }
-    }
-
-    // عد إلى الأعلى قليلاً
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    await new Promise(r => setTimeout(r, 500));
-  }
-
-  // =============================
-  // جمع جميع الروابط المحتملة
-  // =============================
-  function collectCandidateLinks() {
+  function collectLinks() {
     const selectors = [
       'a#video-title',
-      'a[href*="/watch?v="]',
       'ytd-video-renderer a#thumbnail',
       'ytd-video-renderer a#video-title',
       'ytd-reel-video-renderer a#thumbnail',
@@ -121,11 +96,10 @@
   // =============================
   // محاولة العثور على الفيديو والنقر عليه
   // =============================
-  function findAndClickTarget() {
-    const links = collectCandidateLinks();
+  function findAndClickVideo() {
+    const links = collectLinks();
     for (const link of links) {
       const id = extractVideoId(link.href);
-      if (!id) continue;
       if (id === targetVideoId) {
         const rect = link.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
@@ -139,30 +113,45 @@
   }
 
   // =============================
-  // إعادة محاولة البحث + مراقبة DOM
+  // التمرير على الصفحة لضمان تحميل جميع النتائج
+  // =============================
+  async function scrollPage() {
+    let lastHeight = 0;
+    const delay = 1500;
+    const step = 800;
+    for (let i = 0; i < 10; i++) { // 10 محاولات للتمرير
+      window.scrollBy(0, step);
+      await new Promise(r => setTimeout(r, delay));
+      const newHeight = document.body.scrollHeight;
+      if (newHeight === lastHeight) break;
+      lastHeight = newHeight;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // =============================
+  // المراقبة الديناميكية + fallback
   // =============================
   async function startSearch() {
     updateNotification('🔹 تحريك الصفحة للعثور على الفيديو...');
     await scrollPage();
 
-    if (findAndClickTarget()) return;
+    if (findAndClickVideo()) return;
 
     updateNotification('🔹 الفيديو لم يُعثر عليه بعد، مراقبة DOM...');
     const observer = new MutationObserver(() => {
-      if (findAndClickTarget()) {
-        observer.disconnect();
-      }
+      if (findAndClickVideo()) observer.disconnect();
     });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    // محاولة ثانية بعد 2 ثانية
+    // إعادة محاولة ثانية بعد 2 ثانية
     setTimeout(() => {
-      if (findAndClickTarget()) {
+      if (findAndClickVideo()) {
         observer.disconnect();
       } else {
         observer.disconnect();
         updateNotification('⚠️ لم يُعثر على الفيديو، فتح مصادر بديلة...');
-        // إرسال رسالة للخلفية لفتح fallback URLs
         chrome.runtime.sendMessage({
           action: 'try_fallback_redirect',
           videoId: targetVideoId,
@@ -173,7 +162,5 @@
     }, 2000);
   }
 
-  // بدء البحث
   startSearch();
-
 })();

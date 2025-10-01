@@ -1,29 +1,42 @@
 'use strict';
 
-// دالة لتغيير أيقونة الإضافة حسب الحالة
+// =============================
+// دالة لتغيير الأيقونة
+// =============================
 function setIcon(state) {
-  const iconPath = state === 'running' ? {
-    16: 'icons/icon16-pause.png',
-    48: 'icons/icon48-pause.png',
-    128: 'icons/icon128-pause.png'
-  } : {
-    16: 'icons/icon16.png',
-    48: 'icons/icon48.png',
-    128: 'icons/icon128.png'
-  };
+  const iconPath = state === 'running'
+    ? {
+        16: 'icons/icon16-pause.png',
+        48: 'icons/icon48-pause.png',
+        128: 'icons/icon128-pause.png'
+      }
+    : {
+        16: 'icons/icon16.png',
+        48: 'icons/icon48.png',
+        128: 'icons/icon128.png'
+      };
+
   chrome.action.setIcon({ path: iconPath });
 }
 
-// مراقبة تغيّرات التخزين لتحديث الأيقونة
+// =============================
+// مراقبة التغييرات في التخزين
+// =============================
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.automationRunning) {
     setIcon(changes.automationRunning.newValue ? 'running' : 'idle');
   }
 });
 
-const API_BASE = 'https://perceptive-victory-production.up.railway.app';
+// =============================
+// إعداد رابط API الأساسي
+// =============================
+// لاحظ أن الرابط فيه /api
+const API_BASE = 'https://perceptive-victory-production.up.railway.app/api';
 
-// وُرَاثية لتعامل سهل مع chrome.storage
+// =============================
+// دوال للتخزين
+// =============================
 function storageGet(keys) {
   return new Promise(resolve => chrome.storage.local.get(keys, resolve));
 }
@@ -31,99 +44,61 @@ function storageSet(obj) {
   return new Promise(resolve => chrome.storage.local.set(obj, resolve));
 }
 
-// إغلاق تبويب اذا كان معرفه معروف
+// =============================
+// إغلاق تبويب worker
+// =============================
 async function closeWorkerTab(tabId) {
-  if (!tabId) return;
-  try {
-    await chrome.tabs.remove(tabId);
-  } catch (e) {
-    console.warn('فشل إغلاق تبويب worker:', e && e.message ? e.message : e);
-  }
-}
-
-// استخراج videoId من رابط youtube كامل (يتعامل مع watch و short)
-function extractVideoIdFromUrl(url) {
-  try {
-    if (!url) return null;
-    // حالات: https://www.youtube.com/watch?v=XXXXX
-    const u = new URL(url);
-    if (u.searchParams && u.searchParams.get('v')) {
-      return u.searchParams.get('v').split('&')[0];
+  if (tabId) {
+    try {
+      await chrome.tabs.remove(tabId);
+    } catch (e) {
+      console.warn('فشل إغلاق تبويب worker:', e.message);
     }
-    // حالات short: https://www.youtube.com/shorts/XXXXX
-    const m = url.match(/\/shorts\/([A-Za-z0-9_-]{8,})/);
-    if (m && m[1]) return m[1];
-    // fallback generic regex (11 chars typical id)
-    const r = url.match(/[?&]v=([A-Za-z0-9_-]{11})/);
-    if (r && r[1]) return r[1];
-  } catch (e) {
-    console.warn('extractVideoIdFromUrl error', e);
   }
-  return null;
 }
 
-// بدء التشغيل: يجلب بيانات الفيديو من API ثم يفتح نتائج بحث يوتيوب بكلمة مفتاحية
+// =============================
+// بدء التشغيل
+// =============================
 async function startAutomation(userId) {
   if (!userId) throw new Error('User ID غير محدد');
 
-  // جلب بيانات الفيديو من الـ API
-  let videoData;
+  console.log('🔄 بدء عملية التشغيل للمستخدم:', userId);
+
+  // جلب بيانات الفيديوهات من السيرفر
+  let videos;
   try {
-    const resp = await fetch(`${API_BASE}/api/get_video?user_id=${encodeURIComponent(userId)}`);
-    if (!resp.ok) {
-      throw new Error(`خطأ في استدعاء API: ${resp.status}`);
+    const response = await fetch(`${API_BASE}/public-videos?user_id=${encodeURIComponent(userId)}`);
+    if (!response.ok) {
+      throw new Error(`فشل جلب بيانات الفيديو من الخادم: ${response.status}`);
     }
-    videoData = await resp.json();
+    videos = await response.json();
+    console.log('✅ تم جلب بيانات الفيديو:', videos);
   } catch (e) {
-    throw new Error('فشل جلب بيانات الفيديو من الخادم: ' + (e && e.message ? e.message : e));
+    console.error('❌ خطأ في استدعاء API:', e.message);
+    throw new Error(`فشل جلب بيانات الفيديو من الخادم: ${e.message}`);
   }
 
-  if (!videoData || !videoData.video_url) {
-    throw new Error('لم يتم العثور على بيانات الفيديو أو video_url');
+  if (!videos || !Array.isArray(videos) || videos.length === 0) {
+    throw new Error('لم يتم العثور على فيديوهات لهذا المستخدم');
   }
 
-  // تجهيز videoId و اختيار كلمة بحث من keywords أو title
-  const videoId = extractVideoIdFromUrl(videoData.video_url) || null;
-  const keywords = Array.isArray(videoData.keywords) ? videoData.keywords : [];
-  let query = '';
-  if (keywords.length > 0) {
-    // نختار كلمة مفتاحية عشوائية لتجربة نتائج البحث
-    query = keywords[Math.floor(Math.random() * keywords.length)];
-  } else if (videoData.title) {
-    query = videoData.title;
-  } else {
-    // كحالة أخيرة استخدم videoId لو متوفر
-    query = videoId || '';
-  }
+  // اختيار أول فيديو كمثال (ممكن تعدلها لاحقًا)
+  const video = videos[0];
+  console.log('🎬 سيتم تشغيل الفيديو:', video);
 
-  if (!query) {
-    throw new Error('لا توجد كلمات مفتاحية أو عنوان للاستخدام في البحث');
-  }
+  // إنشاء تبويب worker وفتح صفحة worker.html
+  const url = chrome.runtime.getURL('worker.html') + `?user_id=${encodeURIComponent(userId)}`;
+  const tab = await chrome.tabs.create({ url, active: true });
 
-  // فتح صفحة نتائج البحث في تبويب جديد
-  const searchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
-  const tab = await chrome.tabs.create({ url: searchUrl, active: true });
-
-  // تجهيز مصفوفة fallback كاملة
-  const fallback = [
-    "https://l.facebook.com/l.php?u=" + encodeURIComponent(videoData.video_url),
-    "https://l.instagram.com/?u=" + encodeURIComponent(videoData.video_url),
-    "https://www.google.com/url?u=" + encodeURIComponent(videoData.video_url)
-  ];
-
-  // حفظ المعلومات في التخزين ليستخدمها script البحث (search_helper.js)
+  // حفظ الحالة
   await storageSet({
-    userId: userId,
+    userId,
     automationRunning: true,
-    workerTabId: tab.id,
-    currentVideo: {
-      url: videoData.video_url,
-      videoId: videoId,
-      fallback: fallback
-    }
+    workerTabId: tab.id
   });
 
-  // مراقبة اغلاق التبويب يدوياً أو اغلاق النافذة
+  // مراقبة إغلاق التبويب يدويًا
   const onTabRemoved = (removedTabId) => {
     if (removedTabId === tab.id) {
       cleanup();
@@ -131,10 +106,11 @@ async function startAutomation(userId) {
   };
   chrome.tabs.onRemoved.addListener(onTabRemoved);
 
+  // مراقبة إغلاق النافذة
   const onWindowRemoved = (windowId) => {
     chrome.tabs.get(tab.id, (tabInfo) => {
       if (chrome.runtime.lastError) return;
-      if (tabInfo && tabInfo.windowId === windowId) {
+      if (tabInfo.windowId === windowId) {
         cleanup();
       }
     });
@@ -144,105 +120,40 @@ async function startAutomation(userId) {
   async function cleanup() {
     chrome.tabs.onRemoved.removeListener(onTabRemoved);
     chrome.windows.onRemoved.removeListener(onWindowRemoved);
-    await storageSet({ automationRunning: false, workerTabId: null, currentVideo: null });
-    setIcon('idle');
+    await storageSet({ automationRunning: false, workerTabId: null });
   }
-
-  // تعيين الأيقونة للحالة التشغيلية
-  setIcon('running');
-
-  return { ok: true, tabId: tab.id };
 }
 
-// إيقاف التشغيل: يغلق تبويب الـ worker إن وجد ويحدث التخزين
+// =============================
+// إيقاف التشغيل
+// =============================
 async function stopAutomation(tabId) {
-  // إن لم يمرر tabId، اقرأ من التخزين
-  let data = await storageGet(['workerTabId']);
-  const tid = tabId || data.workerTabId || null;
-  if (tid) {
-    await closeWorkerTab(tid);
-  }
-  await storageSet({ automationRunning: false, workerTabId: null, currentVideo: null });
-  setIcon('idle');
+  await closeWorkerTab(tabId);
+  await storageSet({ automationRunning: false, workerTabId: null });
+  console.log('⏹ تم إيقاف التشغيل.');
 }
 
-// استقبال الرسائل (من popup.js أو من content scripts)
+// =============================
+// استقبال الرسائل من popup.js أو content scripts
+// =============================
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (!message || !message.action) {
-    sendResponse({ ok: false, error: 'رسالة غير صحيحة' });
-    return true;
-  }
+  console.log('📩 رسالة مستلمة:', message);
 
   if (message.action === 'start_automation') {
-    startAutomation(message.userId).then(res => {
-      sendResponse({ ok: true, result: res });
-    }).catch(err => {
-      sendResponse({ ok: false, error: err && err.message ? err.message : String(err) });
+    startAutomation(message.userId).then(() => {
+      sendResponse({ ok: true });
+    }).catch(e => {
+      sendResponse({ ok: false, error: e.message });
     });
-    // نرجع true لأننا سنستخدم sendResponse لاحقًا بشكل غير متزامن
-    return true;
+    return true; // مطلوب عشان sendResponse غير متزامن
   }
 
   if (message.action === 'stop_automation') {
     stopAutomation(message.tabId).then(() => {
       sendResponse({ ok: true });
     }).catch(e => {
-      sendResponse({ ok: false, error: e && e.message ? e.message : String(e) });
+      sendResponse({ ok: false, error: e.message });
     });
     return true;
   }
-
-  // رسالة تطلب فتح رابط fallback لأن الـ content script لم يجد الفيديو في نتائج البحث
-  if (message.action === 'try_fallback_redirect') {
-    // نقرأ currentVideo من التخزين
-    storageGet(['currentVideo']).then(data => {
-      const cv = data.currentVideo || null;
-      if (!cv) {
-        // لا توجد بيانات؛ نجيب الرابط الأصلي لو موجود في الرسالة
-        const direct = message.directUrl || null;
-        if (direct) {
-          chrome.tabs.create({ url: direct });
-          sendResponse({ ok: true });
-        } else {
-          sendResponse({ ok: false, error: 'لا توجد بيانات currentVideo' });
-        }
-        return;
-      }
-
-      // اذا هناك تبويب مرسل (sender.tab) نحاول تحديثه، وإلا نفتح تبويب جديد
-      const nextFallback = (Array.isArray(cv.fallback) && cv.fallback.length > 0) ? cv.fallback.shift() : null;
-
-      // نحفظ الحالة بعد ازالة عنصر fallback تم استخدامه
-      storageSet({ currentVideo: cv }).catch(() => { /* لا نهتم */ });
-
-      if (nextFallback) {
-        if (sender && sender.tab && typeof sender.tab.id === 'number') {
-          chrome.tabs.update(sender.tab.id, { url: nextFallback });
-        } else {
-          chrome.tabs.create({ url: nextFallback });
-        }
-        sendResponse({ ok: true, used: nextFallback });
-      } else {
-        // لا مزيد من الـ fallback -> حاول فتح رابط الفيديو مباشرة
-        const direct = cv.url;
-        if (direct) {
-          if (sender && sender.tab && typeof sender.tab.id === 'number') {
-            chrome.tabs.update(sender.tab.id, { url: direct });
-          } else {
-            chrome.tabs.create({ url: direct });
-          }
-          sendResponse({ ok: true, used: direct });
-        } else {
-          sendResponse({ ok: false, error: 'لا يوجد رابط للافتتاح' });
-        }
-      }
-    }).catch(err => {
-      sendResponse({ ok: false, error: err && err.message ? err.message : String(err) });
-    });
-    return true;
-  }
-
-  // افتراضي
-  sendResponse({ ok: false, error: 'action غير مدعوم' });
-  return false;
 });

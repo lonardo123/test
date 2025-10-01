@@ -48,39 +48,7 @@
     <div class="message" id="statusMessage">يرجى الانتظار لحظة...</div>
   </div>
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('user_id');
-
-    if (!userId) {
-      document.getElementById('statusMessage').textContent = '❌ User ID غير محدد!';
-    } else {
-      setTimeout(() => document.getElementById('statusMessage').textContent = 'جارٍ البحث عن الفيديوهات...', 2000);
-      setTimeout(() => document.getElementById('statusMessage').textContent = 'إنشاء جلسة جديدة...', 4000);
-      setTimeout(() => document.getElementById('statusMessage').textContent = 'تحضير الفيديو...', 6000);
-
-      setTimeout(async () => {
-        try {
-          const res = await fetch(`https://perceptive-victory-production.up.railway.app/api/public-videos?user_id=${encodeURIComponent(userId)}`);
-          const data = await res.json();
-          if (!Array.isArray(data) || data.length === 0) throw new Error('لا توجد فيديوهات متاحة');
-
-          const video = data[0];
-          let videoId = null;
-          if (video.video_url && typeof video.video_url === 'string') {
-            const clean = video.video_url.trim();
-            const match = clean.match(/(?:v=|\/shorts\/)([a-zA-Z0-9_-]{11})/);
-            if (match && match[1]) videoId = match[1];
-          }
-          if (!videoId) throw new Error('لا يمكن استخراج معرّف الفيديو');
-
-          window.location.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(videoId)}`;
-          document.getElementById('statusMessage').textContent = 'جارٍ البحث عن الفيديو...';
-        } catch (err) {
-          document.getElementById('statusMessage').textContent = `❌ ${err.message}`;
-        }
-      }, 8000);
-    }
-  </script>
+  <!-- ✅ السكربت الخارجي -->
+  <script src="worker.js"></script>
 </body>
 </html>

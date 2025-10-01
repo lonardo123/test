@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>TasksRewardBot - جارٍ التشغيل...</title>
   <style>
     body {
@@ -20,7 +21,7 @@
       background: white;
       border-radius: 8px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      width: 400px;
+      width: 420px;
     }
     .spinner {
       width: 60px;
@@ -36,19 +37,25 @@
       100% { transform: rotate(360deg); }
     }
     .message {
-      font-size: 18px;
+      font-size: 16px;
       margin: 10px 0;
       color: #333;
+      min-height: 36px;
+    }
+    .small {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="spinner"></div>
+    <div class="spinner" aria-hidden="true"></div>
     <div class="message" id="statusMessage">يرجى الانتظار لحظة...</div>
+    <div class="small" id="debugInfo" style="display:none;"></div>
   </div>
 
-  <!-- ✅ السكربت الخارجي -->
   <script src="worker.js"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@
   function showMessage(text) {
     if (statusEl) statusEl.textContent = text;
   }
+
   function showDebug(text) {
     if (debugEl) {
       debugEl.style.display = 'block';
@@ -20,7 +21,7 @@
   }
 
   function extractVideoIdFromUrl(url) {
-    if (!url) return null;
+    if (!url || typeof url !== 'string') return null;
     try {
       const u = new URL(url);
       if (u.searchParams.get('v')) return u.searchParams.get('v').split('&')[0];
@@ -48,9 +49,9 @@
   function chooseSearchQuery(video) {
     if (Array.isArray(video.keywords) && video.keywords.length > 0) {
       const filtered = video.keywords.map(k => k.toString().trim()).filter(Boolean);
-      if (filtered.length) return filtered[Math.floor(Math.random() * filtered.length)];
+      if (filtered.length > 0) return filtered[Math.floor(Math.random() * filtered.length)];
     }
-    if (video.title) return video.title.trim();
+    if (video.title && video.title.trim()) return video.title.trim();
     const vid = extractVideoIdFromUrl(video.video_url || '');
     return vid || video.video_url || '';
   }
@@ -61,49 +62,63 @@
       const userId = params.get('user_id');
       if (!userId) {
         showMessage('❌ User ID غير موجود في الرابط');
-        showDebug('تأكد من وجود ?user_id=...');
+        showDebug('تأكد من أن الرابط يحتوي على ?user_id=...');
         return;
       }
 
-      showMessage('جارٍ تحميل إعدادات المستخدم...');
-      await sleep(500);
+      showMessage('🔹 جلب إعدادات المستخدم...');
+      await sleep(700);
 
-      showMessage('جارٍ جلب بيانات الفيديو من السيرفر...');
-      let resp = await fetch(`${API_BASE}/public-videos?user_id=${encodeURIComponent(userId)}`);
+      showMessage('🔹 استدعاء السيرفر للحصول على الفيديوهات...');
+      let resp;
+      try {
+        resp = await fetch(`${API_BASE}/public-videos?user_id=${encodeURIComponent(userId)}`);
+      } catch (err) {
+        throw new Error('فشل الاتصال بالخادم: ' + err.message);
+      }
+
       if (!resp.ok) throw new Error(`الخادم أعاد حالة ${resp.status}`);
       const data = await resp.json();
-      if (!Array.isArray(data) || data.length === 0) throw new Error('لا يوجد فيديوهات للمستخدم');
+      if (!Array.isArray(data) || data.length === 0) throw new Error('لم يتم العثور على فيديوهات');
 
       const video = data[0];
-      if (!video.video_url) throw new Error('بيانات الفيديو غير كاملة');
+      if (!video || !video.video_url) throw new Error('بيانات الفيديو غير كاملة');
 
-      const videoId = extractVideoIdFromUrl(video.video_url);
       const currentVideo = {
         url: video.video_url,
-        videoId: videoId,
+        videoId: extractVideoIdFromUrl(video.video_url),
         title: video.title || '',
         keywords: Array.isArray(video.keywords) ? video.keywords : [],
         fallback: buildFallbackUrls(video.video_url)
       };
 
-      showDebug('currentVideo: ' + JSON.stringify({ url: currentVideo.url, videoId: currentVideo.videoId }));
-
+      // حفظ currentVideo في التخزين المحلي
       await new Promise(resolve => {
-        chrome.storage.local.set({ currentVideo }, () => resolve());
+        chrome.storage.local.set({ currentVideo }, () => {
+          if (chrome.runtime.lastError) console.warn('chrome.storage.set error', chrome.runtime.lastError);
+          resolve();
+        });
       });
 
-      showMessage('تم حفظ الفيديو، جاري فتح بحث يوتيوب...');
-      await sleep(300);
+      showDebug('currentVideo تم حفظه: ' + JSON.stringify({
+        url: currentVideo.url,
+        videoId: currentVideo.videoId
+      }));
 
+      // اختيار كلمة البحث
       const query = chooseSearchQuery(video);
-      if (!query) throw new Error('لا توجد كلمة بحث صالحة');
-      const ytSearchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
+      if (!query || query.trim().length === 0) throw new Error('لا توجد كلمة بحث صالحة');
 
+      showMessage('🔹 فتح نتائج البحث في يوتيوب: ' + (query.length > 40 ? query.slice(0, 40) + '...' : query));
+      await sleep(600);
+
+      const ytSearchUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent(query);
       window.location.href = ytSearchUrl;
+
     } catch (err) {
       console.error('worker.js error', err);
-      showMessage('❌ ' + (err.message || String(err)));
-      showDebug(err.stack || '');
+      showMessage('❌ ' + err.message);
+      showDebug('تفاصيل: ' + (err.stack || JSON.stringify(err)));
     }
   }
 
@@ -112,4 +127,5 @@
   } else {
     run();
   }
+
 })();

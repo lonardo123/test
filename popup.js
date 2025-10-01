@@ -1,83 +1,83 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const userIdDisplay = document.getElementById('userIdDisplay');
-  const balanceDisplay = document.getElementById('balanceDisplay');
-  const statusDisplay = document.getElementById('statusDisplay');
-  const startBtn = document.getElementById('startBtn');
-  const messageDiv = document.getElementById('message');
-  const userIdInput = document.getElementById('userIdInput');
-  const saveBtn = document.getElementById('saveBtn');
-  const settingsMessage = document.getElementById('settingsMessage');
+'use strict';
 
-  // تحميل الحالة
-  function loadState() {
-    chrome.storage.local.get(['userId', 'balance', 'automationRunning', 'workerTabId'], (data) => {
-      userIdDisplay.textContent = data.userId || '-';
-      balanceDisplay.textContent = (data.balance || 0).toFixed(2);
-      const isRunning = data.automationRunning === true;
-      statusDisplay.textContent = isRunning ? 'Running' : 'Idle';
-      startBtn.textContent = isRunning ? 'Stop Worker' : 'Start Worker';
+document.addEventListener('DOMContentLoaded', () => {
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const statusEl = document.getElementById('status');
+  const userIdInput = document.getElementById('userId');
+
+  // تحديث واجهة المستخدم حسب التخزين
+  function updateUIFromStorage() {
+    chrome.storage.local.get(['automationRunning', 'userId'], (data) => {
+      const running = !!data.automationRunning;
+      if (running) {
+        statusEl.textContent = 'الحالة: جارٍ التشغيل';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } else {
+        statusEl.textContent = 'الحالة: متوقف';
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+      }
+      if (data.userId) userIdInput.value = data.userId;
     });
   }
 
-  loadState();
+  updateUIFromStorage();
 
-  // الاستماع للتغييرات
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && (changes.automationRunning || changes.userId || changes.balance)) {
-      loadState();
-    }
-  });
-
-  // تبديل التبويبات
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.tab).classList.add('active');
-    });
-  });
-
-  // حفظ الإعدادات
-  saveBtn.addEventListener('click', () => {
-    const userId = userIdInput.value.trim();
+  // زر Start Worker
+  startBtn.addEventListener('click', () => {
+    const userId = userIdInput.value && userIdInput.value.trim();
     if (!userId) {
-      settingsMessage.textContent = '❌ يرجى إدخال User ID';
-      settingsMessage.style.backgroundColor = '#ff5555';
-      settingsMessage.style.display = 'block';
+      alert('الرجاء إدخال User ID صحيح');
       return;
     }
-    chrome.storage.local.set({ userId }, () => {
-      userIdDisplay.textContent = userId;
-      settingsMessage.textContent = '✅ تم الحفظ!';
-      settingsMessage.style.backgroundColor = '#55aa55';
-      settingsMessage.style.display = 'block';
-      setTimeout(() => { settingsMessage.style.display = 'none'; }, 3000);
-    });
-  });
 
-  // بدء/إيقاف التشغيل
-  startBtn.addEventListener('click', () => {
-    chrome.storage.local.get(['automationRunning', 'userId', 'workerTabId'], (data) => {
-      if (data.automationRunning) {
-        // إيقاف
-        chrome.runtime.sendMessage({ action: 'stop_automation', tabId: data.workerTabId });
+    // نحفظ userId محليًا
+    chrome.storage.local.set({ userId: userId });
+
+    startBtn.disabled = true;
+    statusEl.textContent = 'الحالة: جارٍ بدء worker...';
+
+    chrome.runtime.sendMessage({ action: 'start_automation', userId: userId }, (response) => {
+      if (!response) {
+        statusEl.textContent = 'الحالة: لا يوجد رد من الخلفية';
+        startBtn.disabled = false;
+        return;
+      }
+      if (response.ok) {
+        statusEl.textContent = 'الحالة: بدأ الاشتغال بنجاح';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
       } else {
-        // بدء
-        if (!data.userId) {
-          messageDiv.textContent = '❌ أدخل User ID أولًا';
-          messageDiv.style.backgroundColor = '#ff5555';
-          return;
-        }
-        chrome.runtime.sendMessage({ action: 'start_automation', userId: data.userId });
+        statusEl.textContent = 'خطأ: ' + (response.error || 'غير معروف');
+        startBtn.disabled = false;
       }
     });
   });
 
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.action === 'show_message') {
-      messageDiv.textContent = msg.message;
-      messageDiv.style.backgroundColor = msg.type === 'error' ? '#ff5555' : '#55ff55';
+  // زر Stop Worker
+  stopBtn.addEventListener('click', () => {
+    // نحاول جلب workerTabId من التخزين لإرساله للخلفية حتى تغلق التبويب
+    chrome.storage.local.get(['workerTabId'], (data) => {
+      const tabId = data.workerTabId || null;
+
+      chrome.runtime.sendMessage({ action: 'stop_automation', tabId: tabId }, (response) => {
+        if (response && response.ok) {
+          statusEl.textContent = 'الحالة: توقّف التشغيل';
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        } else {
+          statusEl.textContent = 'خطأ أثناء الإيقاف: ' + (response && response.error ? response.error : 'غير معروف');
+        }
+      });
+    });
+  });
+
+  // تحديث الواجهة إذا تغيّر التخزين من الخلفية
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes.automationRunning) {
+      updateUIFromStorage();
     }
   });
 });

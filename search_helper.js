@@ -1,6 +1,12 @@
 (async () => {
   'use strict';
 
+  // ===== التحقق من أننا على YouTube =====
+  if (!window.location.hostname.includes('youtube.com')) {
+    console.log('Not on YouTube');
+    return;
+  }
+
   // ===== شريط إشعارات أسفل الصفحة =====
   let notificationBar = null;
   function createNotificationBar() {
@@ -17,10 +23,11 @@
       padding: 8px 12px;
       font-family: Arial, sans-serif;
       font-size: 13px;
-      z-index: 9999;
+      z-index: 999999;
       border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
       text-align: center;
+      pointer-events: none;
     `;
     document.body.appendChild(notificationBar);
   }
@@ -40,79 +47,102 @@
     updateNotification('❌ videoId غير موجود');
     return;
   }
-  updateNotification('🔹 البحث عن الفيديو المستهدف...');
+  updateNotification(`🔹 البحث عن الفيديو: ${targetVideoId}`);
 
   // ===== استخراج videoId من href =====
   function extractVideoId(href) {
-    if (!href) return null;
+    if (!href || typeof href !== 'string') return null;
+
     const patterns = [
       /v=([A-Za-z0-9_-]{11})/,
-      /\/shorts\/([A-Za-z0-9_-]{8,})/,
-      /\/embed\/([A-Za-z0-9_-]{11})/
+      /\/shorts\/([A-Za-z0-9_-]{8,11})/,
+      /\/embed\/([A-Za-z0-9_-]{11})/,
+      /youtu\.be\/([A-Za-z0-9_-]{8,11})/
     ];
+
     for (const p of patterns) {
-      const m = href.match(p);
-      if (m && m[1]) return m[1];
+      const match = href.match(p);
+      if (match && match[1]) return match[1];
     }
-    const fallback = href.match(/([A-Za-z0-9_-]{11})/);
-    return fallback ? fallback[1] : null;
+
+    const idMatch = href.match(/[A-Za-z0-9_-]{8,11}/);
+    return idMatch ? idMatch[0] : null;
   }
 
-  // ===== جمع الروابط =====
-  function collectLinks() {
+  // ===== محاكاة النقر البشري =====
+  function simulateClick(element) {
+    if (!element || !element.getBoundingClientRect().width) return false;
+
+    const rect = element.getBoundingClientRect();
+    const clientX = rect.left + rect.width / 2;
+    const clientY = rect.top + rect.height / 2;
+
+    const events = [
+      new MouseEvent('mouseover', { bubbles: true, clientX, clientY }),
+      new MouseEvent('mousedown', { bubbles: true, clientX, clientY }),
+      new MouseEvent('mouseup', { bubbles: true, clientX, clientY }),
+      new MouseEvent('click', { bubbles: true, clientX, clientY })
+    ];
+
+    for (const event of events) {
+      element.dispatchEvent(event);
+    }
+
+    return true;
+  }
+
+  // ===== جمع الروابط المرشحة بدقة =====
+  function collectCandidateLinks() {
     const selectors = [
-      'a#video-title',
       'ytd-video-renderer a#thumbnail',
       'ytd-video-renderer a#video-title',
-      'ytd-reel-video-renderer a#thumbnail',
-      'ytd-reel-video-renderer a#video-title'
+      'ytd-reel-item-renderer a#thumbnail',
+      'ytd-grid-video-renderer a#thumbnail',
+      'ytd-rich-item-renderer a#thumbnail'
     ];
-    const set = new Set();
-    const arr = [];
-    selectors.forEach(sel => {
+
+    const links = [];
+    for (const sel of selectors) {
       document.querySelectorAll(sel).forEach(el => {
-        if (el && el.href && !set.has(el.href)) {
-          set.add(el.href);
-          arr.push(el);
+        if (el && el.href && !links.some(l => l.href === el.href)) {
+          links.push(el);
         }
       });
-    });
-    return arr;
+    }
+    return links;
   }
 
   // ===== تمرير الصفحة حتى يتم تحميل جميع النتائج =====
   async function scrollPage() {
-    let lastHeight = 0;
-    const delay = 1500;
-    const step = 800;
-    for (let i = 0; i < 10; i++) {
+    let lastHeight = document.body.scrollHeight;
+    const delay = 1200;
+    const step = window.innerHeight;
+
+    for (let i = 0; i < 8; i++) {
       window.scrollBy(0, step);
       await new Promise(r => setTimeout(r, delay));
       const newHeight = document.body.scrollHeight;
       if (newHeight === lastHeight) break;
       lastHeight = newHeight;
     }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, 600));
   }
 
   // ===== العثور على الفيديو والنقر عليه =====
   async function findAndClickVideo() {
-    const links = collectLinks();
+    const links = collectCandidateLinks();
     for (const link of links) {
       const id = extractVideoId(link.href);
       if (id === targetVideoId) {
-        // تمرير العنصر إلى منتصف الشاشة
         link.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await new Promise(r => setTimeout(r, 600));
-        updateNotification('✅ تم العثور على الفيديو، جار النقر...');
-        try {
-          link.click();
-        } catch (e) {
-          // fallback
-          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+        await new Promise(r => setTimeout(r, 800));
+
+        updateNotification('✅ تم العثور على الفيديو، جارٍ محاكاة النقر...');
+        if (simulateClick(link)) {
+          return true;
         }
-        return true;
       }
     }
     return false;
@@ -126,15 +156,18 @@
     if (await findAndClickVideo()) return;
 
     updateNotification('🔹 الفيديو لم يُعثر عليه بعد، مراقبة DOM...');
+    let found = false;
     const observer = new MutationObserver(async () => {
-      if (await findAndClickVideo()) observer.disconnect();
+      if (!found && await findAndClickVideo()) {
+        found = true;
+        observer.disconnect();
+      }
     });
+
     observer.observe(document.body, { childList: true, subtree: true });
 
     setTimeout(async () => {
-      if (await findAndClickVideo()) {
-        observer.disconnect();
-      } else {
+      if (!found) {
         observer.disconnect();
         updateNotification('⚠️ لم يُعثر على الفيديو، فتح مصادر بديلة...');
         chrome.runtime.sendMessage({

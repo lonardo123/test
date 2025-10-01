@@ -1,151 +1,140 @@
 (() => {
   'use strict';
 
-  // ---------------- شريط الإشعارات ----------------
+  // إنشاء شريط الإشعارات أسفل الصفحة
   let notificationBar = null;
-  let notificationMessage = null;
-
   function createNotificationBar() {
     if (notificationBar) return;
     notificationBar = document.createElement('div');
     notificationBar.style.cssText = `
       position: fixed;
-      bottom: 15px;
+      bottom: 12px;
       left: 50%;
       transform: translateX(-50%);
-      max-width: 400px;
-      background: rgba(0,0,0,0.85);
+      width: 400px;
+      background: #222;
       color: white;
-      padding: 6px 12px;
+      padding: 8px 12px;
       font-family: Arial, sans-serif;
-      font-size: 14px;
-      z-index: 9999;
+      font-size: 13px;
+      z-index: 99999;
+      box-shadow: 0 -1px 5px rgba(0,0,0,0.3);
       border-radius: 6px;
-      text-align: center;
-      box-shadow: 0 0 6px rgba(0,0,0,0.5);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     `;
-    notificationMessage = document.createElement('span');
-    notificationMessage.id = 'notificationMessage';
-    notificationMessage.textContent = '🔹 جاري التحميل...';
-    notificationBar.appendChild(notificationMessage);
+    const messageSpan = document.createElement('span');
+    messageSpan.id = 'tasksNotificationMessage';
+    notificationBar.appendChild(messageSpan);
     document.body.appendChild(notificationBar);
   }
 
   function updateNotification(message) {
-    createNotificationBar();
-    if (notificationMessage) notificationMessage.textContent = message;
+    if (!notificationBar) createNotificationBar();
+    const span = document.getElementById('tasksNotificationMessage');
+    if (span) span.textContent = message;
   }
 
-  // ---------------- دوال مساعدة ----------------
-  function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
-  function extractVideoIdFromHref(href) {
+  // استخراج videoId من href (watch, shorts, embed)
+  function extractVideoId(href) {
     if (!href) return null;
-    const match = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
-    return match ? match[1] : null;
+    try {
+      const m = href.match(/(?:v=|\/shorts\/|\/embed\/)([A-Za-z0-9_-]{8,11})/);
+      if (m && m[1]) return m[1];
+    } catch (e) {}
+    return null;
   }
 
-  function collectCandidateLinks() {
+  // البحث عن الفيديو في صفحة النتائج بناءً على videoId
+  function findVideoById(videoId) {
     const selectors = [
       'a#video-title',
-      'a[href*="/watch?v="]',
       'ytd-video-renderer a#thumbnail',
-      'ytd-video-renderer a#video-title'
+      'ytd-video-renderer a#video-title',
+      'ytd-grid-video-renderer a#video-title'
     ];
-    const set = new Set();
-    const arr = [];
+    const links = [];
     selectors.forEach(sel => {
-      document.querySelectorAll(sel).forEach(el => {
-        if (el && el.href && !set.has(el.href)) {
-          set.add(el.href);
-          arr.push(el);
-        }
+      document.querySelectorAll(sel).forEach(a => {
+        if (a && a.href) links.push(a);
       });
     });
-    return arr;
-  }
 
-  async function scrollPage(duration = 20000, step = 500, interval = 3000) {
-    const endTime = Date.now() + duration;
-    return new Promise(resolve => {
-      const scrollInterval = setInterval(() => {
-        window.scrollBy({ top: step, behavior: 'smooth' });
-        if (Date.now() > endTime) {
-          clearInterval(scrollInterval);
-          resolve();
-        }
-      }, interval);
-    });
-  }
-
-  async function findAndClickTarget(targetVideo) {
-    const links = collectCandidateLinks();
     for (const link of links) {
-      const id = extractVideoIdFromHref(link.href);
-      const urlMatch = targetVideo.url && link.href.includes(targetVideo.url);
-      if ((targetVideo.videoId && id === targetVideo.videoId) || urlMatch) {
-        try {
-          link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-          updateNotification('✅ تم العثور على الفيديو وتشغيله.');
-          console.log('TasksRewardBot: تم النقر على الفيديو المطلوب.');
-          return true;
-        } catch {
-          try { link.click(); return true; } catch {}
-        }
+      const vid = extractVideoId(link.href);
+      if (vid && videoId && vid === videoId) return link;
+    }
+    return null;
+  }
+
+  // الضغط على زر البحث إن وجد
+  function clickSearchButton() {
+    const btn = document.querySelector('button#search-icon-legacy') || document.querySelector('button[aria-label="Search"]');
+    if (btn && btn.offsetParent !== null) {
+      btn.click();
+      updateNotification('🔹 تم الضغط على زر البحث');
+      return true;
+    }
+    return false;
+  }
+
+  // التمرير لأسفل ثم لأعلى لمساعدة ظهور الفيديو
+  async function autoScroll() {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 1200));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 1200));
+  }
+
+  async function searchAndClickVideo(currentVideo, maxAttempts = 6) {
+    updateNotification('🔹 بدء البحث عن الفيديو...');
+    const videoId = currentVideo.videoId;
+    if (!videoId) {
+      updateNotification('❌ لا يوجد videoId للفيديو');
+      return false;
+    }
+
+    for (let i = 0; i < maxAttempts; i++) {
+      const videoEl = findVideoById(videoId);
+      if (videoEl) {
+        updateNotification('✅ تم العثور على الفيديو، جارِ النقر...');
+        videoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await new Promise(r => setTimeout(r, 600));
+        videoEl.click();
+        updateNotification('▶️ الفيديو تم تشغيله');
+        return true;
+      }
+      updateNotification(`🔹 البحث عن الفيديو، محاولة ${i + 1}/${maxAttempts}...`);
+      clickSearchButton();
+      await autoScroll();
+    }
+
+    // إذا لم يُعثر على الفيديو، استخدام fallback
+    updateNotification('⚠️ لم يُعثر على الفيديو، الانتقال إلى fallback');
+    if (currentVideo.fallback && Array.isArray(currentVideo.fallback)) {
+      for (const url of currentVideo.fallback) {
+        window.open(url, '_blank');
       }
     }
     return false;
   }
 
-  async function searchAndPlayVideo(targetVideo, maxWait = 20000) {
+  async function init() {
     createNotificationBar();
-    updateNotification('🔹 بدء البحث عن الفيديو...');
-
-    // الضغط على زر البحث بجانب مربع البحث
-    const searchBtn = document.querySelector('button#search-icon-legacy');
-    if (searchBtn) {
-      updateNotification('🔹 الضغط على زر البحث...');
-      searchBtn.click();
+    const result = await chrome.storage.local.get('currentVideo');
+    const currentVideo = result.currentVideo;
+    if (!currentVideo) {
+      updateNotification('❌ لا يوجد فيديو محدد للبحث');
+      return;
     }
 
-    const observer = new MutationObserver(() => findAndClickTarget(targetVideo));
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    const startTime = Date.now();
-    const scrollStep = 500;
-    const scrollIntervalMs = 3000;
-
-    return new Promise(resolve => {
-      const intervalId = setInterval(async () => {
-        if (findAndClickTarget(targetVideo)) {
-          clearInterval(intervalId);
-          observer.disconnect();
-          resolve(true);
-        } else {
-          window.scrollBy({ top: scrollStep, behavior: 'smooth' });
-          updateNotification('🔄 التمرير للعثور على الفيديو...');
-        }
-        if (Date.now() - startTime > maxWait) {
-          clearInterval(intervalId);
-          observer.disconnect();
-          updateNotification('⚠️ لم يُعثر على الفيديو، التوجه إلى مصدر بديل...');
-          console.warn('TasksRewardBot: لم يُعثر على الفيديو، طلب فتح مصدر بديل.');
-          resolve(false);
-        }
-      }, scrollIntervalMs);
-    });
+    searchAndClickVideo(currentVideo);
   }
 
-  // ---------------- تصدير الدوال ----------------
-  window.TasksRewardBotUtils = {
-    updateNotification,
-    sleep,
-    extractVideoIdFromHref,
-    collectCandidateLinks,
-    findAndClickTarget,
-    searchAndPlayVideo
-  };
-
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();

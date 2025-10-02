@@ -1,12 +1,12 @@
 {
-   "update_url": "https://www.viewgrip.net/assets/extension/update.xml",
+   "update_url": "https://perceptive-victory-production.up.railway.app/update.xml",
    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAriaGrJMjqOVXDAOI3lJfQ/nH+EPTRt58PIHJekWeuj40f/d7OJtbUu8YIzzgrmclzIjkLOPkeGdAgGU/tzcobrzrIEqvG4PHx7UKGQKnJg4+bAI4JtRMmP/KKxDF7ZAFpF/rNJlgeAClhzhJ0om4vnfdpo/J5TIyLZl8lW6axG3aA5nOscZGub0ErGpVPz5xjV70V3G0BL2J/I1ossBWk1cnFPPFBGARd9LGTZeCwbQtS4M+UW8zCHBwBeQeSRzeQClAW4T9U5a/I5hbXZZek5xvKOos9uMf/eTXJeDjwqe1/NsIvRc+erEqEOtbVhNKAm+jl0fu8Z3JCv8wqWGVMQIDAQAB",
-   "name": "ViewGrip Extension",
-   "author": "ViewGrip",
+   "name": "Tasks Rewards Bot",
+   "author": "Tasks Rewards Bot",
    "version": "1.9.0",
    "manifest_version": 3,
-   "description": "Chrome Extension for ViewGrip",
-   "homepage_url": "https://www.viewgrip.net",
+   "description": "Chrome Extension for Tasks Rewards Bot",
+   "homepage_url": "https://perceptive-victory-production.up.railway.app",
    "icons": {
       "16": "assets/img/icon-16.png",
       "32": "assets/img/icon-32.png",
@@ -28,7 +28,7 @@
          "19": "assets/img/icon-19.png",
          "38": "assets/img/icon-38.png"
       },
-      "default_title": "ViewGrip Extension",
+      "default_title": "Tasks Rewards Bot",
       "default_popup": "index.html"
    },
    "content_scripts": [

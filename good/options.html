@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 300px; padding: 15px; font-family: Arial, sans-serif; background: #2c2c2c; color: white; margin: 0; }
+    h3 { margin: 0 0 10px; text-align: center; }
+    .tab-container { display: flex; background: #333; border-radius: 4px; overflow: hidden; margin-bottom: 15px; }
+    .tab { flex: 1; padding: 8px; text-align: center; cursor: pointer; background: #444; }
+    .tab.active { background: #555; }
+    .content { display: none; }
+    .content.active { display: block; }
+    .info-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #444; }
+    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 15px; }
+    .status { margin-top: 10px; padding: 8px; background: #444; border-radius: 4px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h3>TasksRewardBot - Chrome v1.0</h3>
+
+  <div class="tab-container">
+    <div class="tab active" data-tab="main">Main</div>
+    <div class="tab" data-tab="settings">Settings</div>
+  </div>
+
+  <div class="content active" id="main">
+    <div class="info-item">
+      <span>User:</span>
+      <span id="userIdDisplay">-</span>
+    </div>
+    <div class="info-item">
+      <span>Balance:</span>
+      <span id="balanceDisplay">0.00</span>
+    </div>
+    <div class="info-item">
+      <span>Status:</span>
+      <span id="statusDisplay">Idle</span>
+    </div>
+    <button id="startBtn">Start Worker</button>
+    <div class="status" id="message"></div>
+  </div>
+
+  <div class="content" id="settings">
+    <div class="info-item">
+      <span>User ID:</span>
+      <input type="text" id="userIdInput" style="width:100%;background:#333;color:white;border:1px solid #555;padding:5px;">
+    </div>
+    <button id="saveBtn">Save Settings</button>
+    <!-- مساحة عرض الرسالة -->
+    <div id="settingsMessage" style="margin-top:10px; padding:8px; border-radius:4px; text-align:center; display:none;"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

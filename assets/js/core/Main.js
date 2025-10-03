@@ -1,4 +1,4 @@
-const SERVER_URL = "https://perceptive-victory-production.up.railway.app";
+const MainUrl = "https://perceptive-victory-production.up.railway.app";
 const GET_PUBLIC_VIDEOS_URL = (userId) => `${SERVER_URL}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
 const REPORT_WATCH_URL = (userId, videoId, watchedSeconds) =>
   `${SERVER_URL}/video-callback?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=MySuperSecretKey123ForCallbackOnly`;

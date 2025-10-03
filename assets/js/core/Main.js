@@ -1,11 +1,3 @@
-/* Final cleaned version (GET callback) - TasksRewardBot
-   - Base server: https://perceptive-victory-production.up.railway.app
-   - Public videos endpoint:  https://perceptive-victory-production.up.railway.app/api/public-videos?user_id=...
-   - Watch callback (GET):    https://perceptive-victory-production.up.railway.app/video-callback?user_id=...&video_id=...&watched_seconds=...&secret=MySuperSecretKey123ForCallbackOnly
-   - Title set to: TasksRewardBot
-   - File is readable, unminified, and ready to use in a Chrome extension or webpage.
-*/
-
 const SERVER_URL = "https://perceptive-victory-production.up.railway.app";
 const GET_PUBLIC_VIDEOS_URL = (userId) => `${SERVER_URL}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
 const REPORT_WATCH_URL = (userId, videoId, watchedSeconds) =>

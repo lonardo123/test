@@ -1,7 +1,7 @@
 // Start.js - نسخة معدلة نهائية
 
 // السيرفر الأساسي
-const SERVER_URL = "https://perceptive-victory-production.up.railway.app";
+const MainUrl = "https://perceptive-victory-production.up.railway.app";
 
 // روابط API
 const PUBLIC_VIDEOS_URL = (userId) => `${SERVER_URL}/api/public-videos?user_id=${encodeURIComponent(userId)}`;

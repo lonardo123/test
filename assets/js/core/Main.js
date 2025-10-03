@@ -1,7 +1,9 @@
 const MainUrl = "https://perceptive-victory-production.up.railway.app";
-const GET_PUBLIC_VIDEOS_URL = (userId) => `${SERVER_URL}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
+
+const GET_PUBLIC_VIDEOS_URL = (userId) => `${MainUrl}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
 const REPORT_WATCH_URL = (userId, videoId, watchedSeconds) =>
-  `${SERVER_URL}/video-callback?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=MySuperSecretKey123ForCallbackOnly`;
+  `${MainUrl}/video-callback?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=MySuperSecretKey123ForCallbackOnly`;
+
 const APP_TITLE = "TasksRewardBot";
 
 // Apply the requested title explicitly
@@ -73,7 +75,7 @@ async function fetchPublicVideos(userId) {
 }
 
 /**
- * Report watch progress using GET /video-callback with secret in URL (exactly as you specified)
+ * Report watch progress using GET /video-callback with secret in URL
  */
 async function reportWatch(userId, videoId, watchedSeconds) {
   if (!userId || !videoId) {
@@ -87,7 +89,6 @@ async function reportWatch(userId, videoId, watchedSeconds) {
       console.warn("reportWatch: server returned", resp.status, "url:", url);
       return null;
     }
-    // try to parse JSON; if not JSON return text
     let result = null;
     try { result = await resp.json(); } catch (e) { result = await resp.text(); }
     console.log("reportWatch response:", result);
@@ -150,7 +151,7 @@ async function init() {
     console.log("No user_id found in storage or query string.");
   }
 
-  // Delegated click handler for actions (watch/like/comment/subscribe)
+  // Delegated click handler
   document.addEventListener("click", async (ev) => {
     const btn = ev.target.closest && ev.target.closest("[data-action][data-video-id]");
     if (!btn) return;
@@ -191,7 +192,7 @@ if (document.readyState === "loading") {
 
 // Expose API for debugging/manual usage
 window.TasksRewardBot = {
-  SERVER_URL,
+  MainUrl,
   GET_PUBLIC_VIDEOS_URL,
   REPORT_WATCH_URL,
   APP_TITLE,

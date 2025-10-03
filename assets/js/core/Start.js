@@ -1,12 +1,9 @@
-// Start.js - نسخة معدلة نهائية
-
-// السيرفر الأساسي
 const MainUrl = "https://perceptive-victory-production.up.railway.app";
 
 // روابط API
-const PUBLIC_VIDEOS_URL = (userId) => `${SERVER_URL}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
+const PUBLIC_VIDEOS_URL = (userId) => `${MainUrl}/api/public-videos?user_id=${encodeURIComponent(userId)}`;
 const REPORT_WATCH_URL = (userId, videoId, watchedSeconds) =>
-  `${SERVER_URL}/video-callback?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=MySuperSecretKey123ForCallbackOnly`;
+  `${MainUrl}/video-callback?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=MySuperSecretKey123ForCallbackOnly`;
 
 // تغيير العنوان
 const APP_TITLE = "TasksRewardBot";
@@ -69,7 +66,7 @@ if (document.readyState === "loading") {
 
 // جعل الدوال متاحة عالمياً
 window.StartApp = {
-  SERVER_URL,
+  MainUrl,
   PUBLIC_VIDEOS_URL,
   REPORT_WATCH_URL,
   APP_TITLE,

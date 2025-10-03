@@ -17,7 +17,7 @@ let videoList = [];
 // ==================================================
 async function fetchVideosForUser(userId) {
     try {
-        const response = await fetch(`${SERVER_URL}/api/public-videos?user_id=${userId}`);
+        const response = await fetch(`${MainUrl}/api/public-videos?user_id=${userId}`);
         if (!response.ok) {
             throw new Error("فشل في جلب قائمة الفيديوهات من السيرفر");
         }
@@ -86,7 +86,7 @@ async function finishVideo(video) {
         const watchedSeconds = video.duration_seconds;
 
         const callbackUrl =
-            `${SERVER_URL}/video-callback?user_id=${currentUserId}` +
+            `${MainUrl}/video-callback?user_id=${currentUserId}` +
             `&video_id=${video.id}` +
             `&watched_seconds=${watchedSeconds}` +
             `&secret=${CALLBACK_SECRET}`;

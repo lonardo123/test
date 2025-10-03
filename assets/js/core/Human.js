@@ -1,4 +1,4 @@
-const SERVER_URL = "https://perceptive-victory-production.up.railway.app";
+const MainUrl = "https://perceptive-victory-production.up.railway.app";
 
 // تشفير المفتاح الأساسي Base64
 const ENCODED_SECRET = "TXlTdXBlclNlY3JldEtleTEyM0ZvckNhbGxiYWNrT25seQ==";

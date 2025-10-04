@@ -1,4 +1,4 @@
-const MainUrl = "https://perceptive-victory-production.up.railway.app";
+window.MainUrl = window.MainUrl || "https://perceptive-victory-production.up.railway.app";
 
 // روابط API
 const PUBLIC_VIDEOS_URL = (userId) => `${MainUrl}/api/public-videos?user_id=${encodeURIComponent(userId)}`;

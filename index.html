@@ -1,74 +1,77 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-    <meta charset="utf-8">
+    <meta charset="UTF-8">
+    <title>TasksRewardBot</title>
     <link href="assets/css/bootstrap.css" rel="stylesheet" type="text/css">
     <link href="assets/css/simple-line-icons.css" rel="stylesheet" type="text/css">
     <link href="assets/css/bootstrap-toggle.min.css" rel="stylesheet" type="text/css">
     <link href="assets/css/ui-overlay.css" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.3.0/css/font-awesome.css" />
 </head>
 
 <body>
-    <div class="card text-white bg-dark mb" style="width: 300px;">
+    <div class="card text-white bg-dark mb" style="width: 320px;">
         <div class="card-header">
-            <h5 class="card-title">Tasks Rewards Bot - Chrome v<span id="ExtensionVersion"></span></h5>
+            <h5 class="card-title">Tasks Rewards Bot - Chrome</h5>
         </div>
+
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item flex-fill">
                 <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home-tab-info" role="tab"
-                    aria-controls="home-tab-info" aria-selected="true"><span id="main_nav">Main</span></a>
+                    aria-controls="home-tab-info" aria-selected="true">Main</a>
             </li>
             <li class="nav-item flex-fill">
                 <a class="nav-link" id="tab-settings" data-toggle="tab" href="#tab-settings-info" role="tab"
                     aria-controls="tab-settings-info" aria-selected="false">Settings</a>
             </li>
         </ul>
-        <div class="card-body">
-            <div class="tab-content">
-                <div class="overlay" id="overlay">
-                    <div class="overlay__inner">
-                        <div class="overlay__content"><span class="spinner"></span></div>
-                    </div>
-                </div>
 
+        <div class="card-body">
+            <!-- Overlay التحميل -->
+            <div class="overlay" id="overlay">
+                <div class="overlay__inner">
+                    <div class="overlay__content"><span class="spinner"></span></div>
+                </div>
+            </div>
+
+            <div class="tab-content">
+                <!-- Main Tab -->
                 <div class="tab-pane active" id="home-tab-info" role="tabpanel" aria-labelledby="home-tab">
                     <div id="home-tab-msg">
-
-                        <!-- LOGIN FORM START -->
+                        <!-- Login Form -->
                         <div id="theform" class="text-center">
                             <button type="button" class="btn btn-primary" id="ButtonLogin" style="width: 100px;">Login</button>
                         </div>
-                        <!-- LOGIN FORM END -->
 
-                        <!-- USER INFO START -->
+                        <!-- User Info -->
                         <div id="userinfo" style="display:none;">
-                            <ul class="list-group bg-dark">
+                            <ul class="list-group bg-dark mb-2">
                                 <li class="list-group-item d-flex justify-content-between align-items-center bg-dark">
                                     <b class="simple-icon-user"> User</b>
-                                    <span id="username" class="text-primary"><img src="assets/img/loader.gif" alt="Requesting data"></span>
+                                    <span id="username" class="text-primary"></span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center bg-dark">
                                     <b class="simple-icon-cup"> Coins</b>
-                                    <span id="coins" class="text-info"><img src="assets/img/loader.gif" alt="Requesting data"></span>
+                                    <span id="coins" class="text-info"></span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center bg-dark">
                                     <b class="simple-icon-wallet"> Balance</b>
-                                    <span id="balance" class="text-success"><img src="assets/img/loader.gif" alt="Requesting data"></span>
+                                    <span id="balance" class="text-success"></span>
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center bg-dark">
                                     <b class="simple-icon-rocket"> Membership</b>
-                                    <small id="membership" class="text-danger"><img src="assets/img/loader.gif" alt="Requesting data"></small>
+                                    <small id="membership" class="text-danger"></small>
                                 </li>
                             </ul>
-                        </div>
-                        <!-- USER INFO END -->
 
+                            <!-- Video List -->
+                            <div id="tasksrewardbot_videos_list"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- USER SETTINGS TAB START -->
+                <!-- Settings Tab -->
                 <div class="tab-pane" id="tab-settings-info" role="tabpanel" aria-labelledby="tab-settings">
                     <div id="tab-settings-msg" class="text-center">
                         <div class="card">
@@ -99,12 +102,12 @@
                         </div>
                     </div>
                 </div>
-                <!-- USER SETTINGS TAB END -->
-
             </div>
+
             <hr>
             <div id="logout" class="text-right" style="display:none;">
                 <input id="start" type="button" value="Start Worker" class="btn btn-primary" />
+                <input id="stop" type="button" value="Stop Worker" class="btn btn-danger" />
             </div>
             <div id="join">
                 <p class="card-text">Don't have account? <a id="signup" href="#" title="Join Now"><b>Join Now</b></a></p>
@@ -112,37 +115,15 @@
         </div>
     </div>
 
-    <!-- SCRIPTS -->
+    <!-- Scripts -->
     <script src="assets/js/plugins/jquery-3.6.0.js"></script>
-    <script src="assets/js/auth/auth.js"></script>
     <script src="assets/js/plugins/bootstrap.js"></script>
     <script src="assets/js/plugins/bootstrap-toggle.min.js"></script>
-
-    <!-- Core scripts -->
+    <script src="assets/js/auth/auth.js"></script>
+    <script src="assets/js/core/Settings.js"></script>
     <script src="assets/js/core/Main.js"></script>
-    <script src="assets/js/core/Start.js"></script>
     <script src="assets/js/core/Human.js"></script>
-
-    <script>
-        // بعد تحميل الصفحة، إخفاء overlay تلقائيًا بعد 1 ثانية
-        $(document).ready(function () {
-            setTimeout(() => {
-                $("#overlay").hide();
-            }, 1000);
-
-            // عرض بيانات المستخدم إذا تم تسجيل الدخول
-            let savedUser = localStorage.getItem("sessionUser");
-            if (savedUser) {
-                let user = JSON.parse(savedUser);
-                $("#theform").hide();
-                $("#userinfo").show();
-                $("#username").text(user.username || "Unknown");
-                $("#coins").text(user.coins || 0);
-                $("#balance").text(user.balance || 0);
-                $("#membership").text(user.membership || "Free");
-            }
-        });
-    </script>
+    <script src="assets/js/core/Start.js"></script>
 </body>
 
 </html>

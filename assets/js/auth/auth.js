@@ -1,4 +1,4 @@
-const MainUrl = "https://perceptive-victory-production.up.railway.app";
+window.MainUrl = window.MainUrl || "https://perceptive-victory-production.up.railway.app";
 
 $(document).ready(function () {
     // تسجيل الدخول

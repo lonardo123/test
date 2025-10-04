@@ -1,139 +1,88 @@
 window.MainUrl = window.MainUrl || "https://perceptive-victory-production.up.railway.app";
 
-// تشفير المفتاح الأساسي Base64
 const ENCODED_SECRET = "TXlTdXBlclNlY3JldEtleTEyM0ZvckNhbGxiYWNrT25seQ==";
-
-// فك التشفير عند الاستخدام
 const CALLBACK_SECRET = atob(ENCODED_SECRET);
 
-// تعريف المتغيرات
 let currentUserId = null;
 let isWorkerRunning = false;
 let currentVideoIndex = 0;
 let videoList = [];
 
-// ==================================================
-// تحميل قائمة الفيديوهات للمستخدم
-// ==================================================
 async function fetchVideosForUser(userId) {
     try {
         const response = await fetch(`${MainUrl}/api/public-videos?user_id=${userId}`);
-        if (!response.ok) {
-            throw new Error("فشل في جلب قائمة الفيديوهات من السيرفر");
-        }
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("خطأ أثناء جلب الفيديوهات:", error);
+        if (!response.ok) throw new Error("Failed to fetch videos");
+        return await response.json();
+    } catch (err) {
+        console.error("Error fetching videos:", err);
         return [];
     }
 }
 
-// ==================================================
-// بدء تشغيل العامل (Worker)
-// ==================================================
 async function startWorker(userId) {
-    if (isWorkerRunning) {
-        console.warn("العامل يعمل بالفعل!");
-        return;
-    }
+    if (isWorkerRunning) return;
 
     currentUserId = userId;
     isWorkerRunning = true;
     currentVideoIndex = 0;
 
-    console.log(`🚀 بدء تشغيل العامل للمستخدم: ${userId}`);
+    $("#overlay").show();
 
     videoList = await fetchVideosForUser(userId);
 
-    if (videoList.length === 0) {
-        console.warn("❌ لم يتم العثور على فيديوهات للمستخدم.");
+    if (!videoList.length) {
+        console.warn("No videos for this user");
         isWorkerRunning = false;
+        $("#overlay").hide();
         return;
     }
 
     playNextVideo();
 }
 
-// ==================================================
-// تشغيل الفيديو الحالي
-// ==================================================
 function playNextVideo() {
-    if (!isWorkerRunning) {
-        return;
-    }
-
+    if (!isWorkerRunning) return;
     if (currentVideoIndex >= videoList.length) {
-        console.log("✅ انتهى تشغيل جميع الفيديوهات.");
         isWorkerRunning = false;
+        $("#overlay").hide();
+        console.log("All videos finished");
         return;
     }
 
     const video = videoList[currentVideoIndex];
-    console.log(`▶️ تشغيل الفيديو: ${video.title} (ID: ${video.id}) — المدة: ${video.duration_seconds} ثانية`);
+    console.log(`Playing video ${video.title} ID:${video.id}`);
 
-    // محاكاة تشغيل الفيديو بانتظار نفس مدة الفيديو
-    setTimeout(() => {
-        finishVideo(video);
-    }, video.duration_seconds * 1000);
+    setTimeout(() => finishVideo(video), video.duration_seconds * 1000);
 }
 
-// ==================================================
-// عند انتهاء الفيديو: إرسال بيانات المشاهدة للسيرفر
-// ==================================================
 async function finishVideo(video) {
     try {
         const watchedSeconds = video.duration_seconds;
 
-        const callbackUrl =
-            `${MainUrl}/video-callback?user_id=${currentUserId}` +
-            `&video_id=${video.id}` +
-            `&watched_seconds=${watchedSeconds}` +
-            `&secret=${CALLBACK_SECRET}`;
-
-        console.log(`📡 إرسال نداء للسيرفر: ${callbackUrl}`);
-
+        const callbackUrl = `${MainUrl}/video-callback?user_id=${currentUserId}&video_id=${video.id}&watched_seconds=${watchedSeconds}&secret=${CALLBACK_SECRET}`;
         const response = await fetch(callbackUrl);
-        const result = await response.text();
-
-        if (response.ok) {
-            console.log(`🎉 نجاح: تمت إضافة ربح للمستخدم ${currentUserId} بعد مشاهدة الفيديو ${video.id}`);
-        } else {
-            console.error(`⚠️ فشل: ${result}`);
-        }
-    } catch (error) {
-        console.error("❌ خطأ أثناء إنهاء الفيديو:", error);
+        if (response.ok) console.log(`Reported video ${video.id} for user ${currentUserId}`);
+    } catch (err) {
+        console.error("Error finishing video:", err);
     }
 
-    // الانتقال للفيديو التالي
     currentVideoIndex++;
     playNextVideo();
 }
 
-// ==================================================
-// إيقاف العامل
-// ==================================================
 function stopWorker() {
     isWorkerRunning = false;
-    console.log("🛑 تم إيقاف العامل.");
+    $("#overlay").hide();
+    console.log("Worker stopped");
 }
 
-// ==================================================
-// ربط الأزرار من الواجهة (Start / Stop)
-// ==================================================
 $(document).ready(function () {
     $("#start").on("click", function () {
         let savedUser = localStorage.getItem("sessionUser");
-        if (!savedUser) {
-            alert("❌ يجب تسجيل الدخول أولاً.");
-            return;
-        }
-
+        if (!savedUser) { alert("Login first"); return; }
         let user = JSON.parse(savedUser);
         startWorker(user.user_id);
     });
 
-    $("#stop").on("click", function () {
-        stopWorker();
-    });
+    $("#stop").on("click", function () { stopWorker(); });
 });

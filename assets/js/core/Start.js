@@ -454,9 +454,10 @@ function onTimesUp() {
     VGNotif(1, "info", "verifying", 0, '').then(_0x2d4fb5 => {
       if (_0x2d4fb5) {
         setTimeout(function () {
-          chrome.storage.local.get("token", _0x2e3eaa => {
+          // ✅ تم استبدال "token" بـ "user_id"
+          chrome.storage.local.get("user_id", _0x2e3eaa => {
             const _0x6fd13c = {
-              token: _0x2e3eaa.token
+              user_id: _0x2e3eaa.user_id // ← هنا التغيير
             };
             $.ajax({
               'url': MainUrl + "/api/worker/verification/",
@@ -569,20 +570,21 @@ function getVideo() {
                 OnInteraction: 0x1
               };
               chrome.storage.local.set(_0x116127, () => {
-                chrome.storage.local.get("token", _0x4209a1 => {
-                  if (!_0x4209a1.token) {
+                // ✅ تم استبدال "token" بـ "user_id"
+                chrome.storage.local.get("user_id", _0x4209a1 => {
+                  if (!_0x4209a1.user_id) {
                     UpDateWindow(MainUrl + "/worker/start");
                     return;
                   }
                   setTimeout(() => {
                     var _0x339602;
-                    _0x339602 = _0x4209a1.token;
+                    _0x339602 = _0x4209a1.user_id; // ← هنا التغيير
                     return void $.ajax({
                       'url': MainUrl + "/api/worker/fetch_video/",
                       'type': "GET",
                       'cache': false,
                       'data': {
-                        'token': _0x339602,
+                        'user_id': _0x339602, // ← هنا التغيير
                         'version': Manifest.version
                       },
                       'timeout': 0x1388,

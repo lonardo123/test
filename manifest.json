@@ -48,8 +48,5 @@
    ],
    "background": {
       "service_worker": "assets/background.js"
-   },
-   "options_ui": {
-      "page": "index.html"
    }
 }

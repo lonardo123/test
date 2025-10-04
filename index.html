@@ -173,8 +173,7 @@
 
             // عرض البيانات
             document.getElementById("username").textContent = data.data.fullname || userId;
-            document.getElementById("coins").textContent = data.data.coins || 0;
-            document.getElementById("balance").textContent = (data.data.balance || 0).toFixed(2);
+            document.getElementById("balance").textContent = (data.data.balance || 0).toFixed(4);
             document.getElementById("membership").textContent = data.data.membership || "Free";
 
             // تبديل العرض
@@ -195,3 +194,4 @@
 </body>
 
 </html>
+

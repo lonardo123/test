@@ -250,22 +250,26 @@ $(document).ready(function () {
 
     // Start Worker - نترك المنطق كما هو (يرسل رسالة للـ background لفتح التبويب)
    $("#start").on("click", function () {
-    chrome.storage.sync.get('uniqueID', function (data) {
-        const user_id = data.uniqueID;
-        if (!user_id) {
-            alert("User ID not found. Please log in first.");
-            return;
-        }
+  chrome.storage.sync.get('uniqueID', function (data) {
+    const user_id = data.uniqueID;
+    if (!user_id) {
+      alert("User ID not found. Please log in first.");
+      return;
+    }
 
-        const fullUrl = MainUrl + "/worker/start?user_id=" + encodeURIComponent(user_id);
+    const fullUrl = MainUrl + "/worker/start?user_id=" + encodeURIComponent(user_id);
 
-        chrome.runtime.sendMessage({
-            cmd: "openTab",
-            url: fullUrl
-        });
-
-        $("#start").prop("disabled", true);
+    // فتح تبويب خارجي
+    chrome.tabs.create({ url: fullUrl }, function (tab) {
+      // بعد فتح التبويب، نحقن ملف Start.js في الصفحة
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["assets/js/core/Start.js"]
+      });
     });
+
+    $("#start").prop("disabled", true);
+  });
 });
 
     // Load UI initially from local storage (عرض فوري)

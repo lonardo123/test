@@ -1,345 +1,301 @@
-(function (_0x2f9d33, _0x1a9518) {
-  const _0x43af1d = _0x2f9d33();
-  while (true) {
-    try {
-      const _0x5b8d55 = -parseInt(_0x33a2(219, 0x24a)) / 1 + -parseInt(_0x33a2(186, 0x2b3)) / 2 * (parseInt(_0x33a2(323, 0x393)) / 3) + -parseInt(_0x33a2(446, 0x22c)) / 4 + parseInt(_0x33a2(249, 0x1d4)) / 5 + -parseInt(_0x33a2(429, 0x3d6)) / 6 * (-parseInt(_0x33a2(398, -0x29c)) / 7) + -parseInt(_0x33a2(339, -0x1d8)) / 8 + -parseInt(_0x33a2(492, 0x26d)) / 9 * (-parseInt(_0x33a2(548, 0x397)) / 10);
-      if (_0x5b8d55 === _0x1a9518) {
-        break;
-      } else {
-        _0x43af1d.push(_0x43af1d.shift());
-      }
-    } catch (_0x3ccca3) {
-      _0x43af1d.push(_0x43af1d.shift());
-    }
-  }
-})(_0x5c10, 975943);
+'use strict';
 
-function _0x5c10() {
-  const _0x4dc1df = ['15367080jcIlSD', "tab ", 'jLlLq', 'YWoIU', 'RDSHQ', 'kOwJt', 'asarb', 'bkwBa', 'acebo', 'alovS', 'se.pn', 'get', 'delet', 'YPEUO', 'YVBGJ', 'bxLMZ', 'n-19.', 'UyJFC', 'zukFL', 'IKREC', 'Start', 'uRTqm', 'onUpd', 'oLvCO', 'aaeFK', 'NyvMy', 'BHWSl', 'HrkDH', 'onIns', 'MWPfk', '/acco', '.goog', 'zDpam', 'lSaAN', 'apply', 'HYayC', 'CJLog', 'FnWYa', 'w.vie', 'popup', 'UkPzD', 'path', 'WJixa', 'KZnkX', 'baiht', " due ", 'stene', 'vesxD', 'HKPDN', 'VKYKr', 'stora', 'woLpA', '/asse', 'HmrtA', 'snhpi', 'ube.c', "ding ", 'uwgZK', 'actio', '203zLdvMt', 'url', 'uPXun', 'urvsa', 'BOCDi', 'BHXEh', 'Worke', 'const', 'xUPgB', 'CyGVZ', 'JngLp', 'ofXGo', 'ing', 'XeErg', 'om/*', 'zOJce', 'ok.co', 'KLFhb', 'KUSSx', 'gjXDG', '*://*', 'lem', 'fmXoL', 'Lomik', 'KrdLP', 'ebTbx', 'yHbOP', 'NDNOk', 'title', 'hostn', 'ebTYh', '311964WASTTC', 'FuKMq', 'HhcSJ', 'xJgvj', 'CoyYX', 'iNCys', 'LZnyI', 'index', 'ame', 'toLow', 'AZaWj', 'cdoNu', 'gFnmU', 'WAgMz', 'tle', 'be.co', 'png', '1488724oVysCC', 'XncWg', 'searc', 'vzWYl', 'cFSPC', 'remov', 'histo', 'GetDa', 'qCscp', "Stop ", 'ated', 'cked', 'xpjuy', 'KAfbg', 'OGpLD', '://ww', 'anlOj', 'NjosQ', 'NiFKU', 'mBGlk', 'PFPjI', 'setIc', 'tyriz', 'ZTUfm', 'TgrlV', 'XsLNo', 'zVNye', 'rTgIu', 'yzJOu', 'ts/im', 'pfkKM', 'mKSoY', 'nstag', 'forEa', 'www.f', 'lmksM', 'nZUHX', 'qJAeo', 'qOVEr', 'zuybt', 'oqMNH', 'CTeEc', 'EhmFS', 'Qiunw', 'ized', 'nBlDV', '25002OPYSYz', 'onCli', 'inclu', '.html', 'HepCL', 'OOEel', 'kieGO', 'BEmWb', 'GwHbb', 'TSuoe', 'Kbzyh', 'SkGFp', 'CIdcn', 'loadi', 'iqoBG', 'AkUNf', 'yLcrx', 'spGsF', 'KuPNh', 'WsXTB', 'MHkGj', 'MQTTp', 'essag', 'OIpBk', 'aSFbS', 'rhwUy', 'LtdLY', '.net', 'yWbGK', 'pathn', 'kAOWp', 'qOlPZ', 'scFfa', 'yUkKu', 'WQKGX', 'qFPaa', 'CgBHL', 'izCxW', 'Hcaue', 'gfDjD', 'ers', 'jcYtY', '/sorr', 'uYRdV', 'wtneT', 'PAara', '.yout', 'DKgIx', 'llKzV', 'uwZyH', 'youtu', 'gQiES', 'sIkmI', 'GvKmx', 'lnYIT', 'runti', '14860ZZbZDn', 'set', 'KYtJo', 'JBYcb', 'le.', 'cWBho', 'xMXKT', 'nwXmU', 'pPVCx', 'KxlUj', 'AbTaj', '(((.+', 'ip.ne', 'ARAAR', 'VmYQB', 'BQIyD', 'zTGnE', 'luSre', 'vsbkv', 'NjvdL', 'addLi', 'pKPys', 'pZTbF', 'QFQOB', 'ZQLpu', 'tTTUx', 'eTab', 'nfHLi', 'focus', 'sendM', 'yaNQa', 'THCiN', 'QEmIW', 'UzfrW', 'WZVKt', 'openT', 'statu', 'fhYQH', 'aaIPl', 'iHpQs', 'bLqUL', 'aOunz', 'vdgGd', 'MALtm', 'ram.c', 'YzPtu', 'ktatZ', 'NhwIT', 'WtTbr', 'creat', 'xURrl', 'XPRlK', 'text', 'lxaQH', 'hmSpZ', 'GsBbo', 'YWtkd', '2253766OlBgae', 'yzDjH', 'QKfOS', 'dwdqa', 'iJNsf', 'UhpWb', 'lengt', 'onMes', 'JqbFH', 'Hzyid', 'zDzMX', 'GdfiU', 'eQraB', 'StaZa', 'FmyOj', 'LkAZV', 'IrMVl', 'IBFvS', 'DYdjP', 'msg', 'pZbjh', 'MpWkT', 'lwnpQ', 'IGKiw', 'DDVdL', 'MbxsZ', 'des', 'HLfIV', 'cmd', 'YZqAT', 'jeRkU', 'reloa', 'QDVyD', '1594964HSqUzp', 'cTPRM', 'EKCKe', 'state', 'www.i', 'EIpif', 'Rende', 'talle', 'dawaG', 'nqGNr', 'DFIic', 'javYP', 'pup', 'dEImS', 'unts', 'SynXB', 'AuXiE', 'tfUdv', 'QUWir', 'CXoKr', 'ading', 'VkkfL', 'iewgr', 'wWPkn', 'ructo', 'YTVkt', 'yXQmk', 'DZGhW', 'Reloa', 'iFRsm', '1774610WKJIgs', 'toStr', 'AWArE', "ow lo", 'HuRsa', 'tabId', 'hctyN', 'lastE', 'xxPBz', 'OJcpD', 'tMZih', 'ExzjA', 'sage', 'maxim', 'ring', 'xgjPU', 'compl', 'LbIhc', 'DSPln', 'onRem', 'yoFny', 'sync', 'aUbDL', 'LMuBh', 'https', 'g/ico', 'oecVb', 'meVmo', 'XfjDA', 'erCas', 'www.v', 'hbThq', 'cIMlo', "to sl", ')+)+)', 'rProb', 'tabs', 'XeMOQ', 'BadxQ', 'omBxW', 'qwXRk', 'khQEh', 'warn', " Work", 'ThXUc', 'oVSwq', 'NoAKD', 'fiviE', 'setTi', 'FUWeN', 'wgrip', 'xHyXk', 'uVfVu', 'OBjIB', 'xmwYI', 'XfQHK', 'qtxVH', 'eUrl', 'updat', 'MMiuO', 'GiBxj', 'ToVnW', 'egSmq', 'KtzQI', 'lNEpi', 'nBzoB', 'Mcvov', 'ete', 'srVNt', 'oAVBl', 'vxrCI', 'rror', 'STLqF', 'TOaXy', '3hnGRcM', 'ZKggh', 'MErIx', 'windo', 'AwkqE', 'xaYUo', '/work', 'DCFCA', 'query', 'g/pau', 'setPo', 'gXVDn', 'dxJYw', 'rpRmY', 'wxuqw', 'oved'];
-  _0x5c10 = function () {
-    return _0x4dc1df;
-  };
-  return _0x5c10();
-}
+/**
+ * Background service worker (manifest v3)
+ * - لا يحتوي على chrome.runtime.onInstalled (تمت إزالته كما طلبت)
+ * - يقدّم سلوك بدء/إيقاف العامل عبر chrome.action.onClicked
+ * - يتابع تبويب العامل (tabId) في chrome.storage.sync
+ */
 
-const _0x14fcfd = function () {
-  const _0x5d2f6e = {
-    KrdLP: "youtube.com",
-    uwgZK: function (_0x1d5ab1, _0x377932) {
-      return _0x1d5ab1 === _0x377932;
-    },
-    BQIyD: "KtzQI"
-  };
-  _0x5d2f6e.XfQHK = "jLlLq";
-  _0x5d2f6e.GiBxj = function (_0x38d598, _0x54a468) {
-    return _0x38d598 !== _0x54a468;
-  };
-  _0x5d2f6e.LtdLY = "iFRsm";
-  _0x5d2f6e.jeRkU = "yzJOu";
-  _0x5d2f6e.egSmq = "qtxVH";
-  _0x5d2f6e.yoFny = "FuKMq";
-  let _0x5971ab = true;
-  return function (_0x24b82a, _0x46b447) {
-    const _0x3abd07 = {
-      'MbxsZ': "youtube.com",
-      'AbTaj': function (_0x18e75b, _0x5588d0) {
-        return _0x18e75b === _0x5588d0;
-      },
-      'eQraB': "KtzQI",
-      'baiht': _0x5d2f6e.XfQHK,
-      'qCscp': function (_0x5c0b6f, _0x532d82) {
-        return _0x5d2f6e.GiBxj(_0x5c0b6f, _0x532d82);
-      },
-      'gFnmU': _0x5d2f6e.LtdLY,
-      'AwkqE': _0x5d2f6e.jeRkU
-    };
-    if (_0x5d2f6e.GiBxj(_0x5d2f6e.egSmq, _0x5d2f6e.yoFny)) {
-      const _0xa2189 = _0x5971ab ? function () {
-        if ("KtzQI" === _0x3abd07.baiht) {
-          _0x4a439c.runtime.lastError;
-        } else {
-          if (_0x46b447) {
-            if (_0x5d2f6e.GiBxj(_0x3abd07.gFnmU, _0x3abd07.AwkqE)) {
-              const _0x2ed692 = _0x46b447.apply(_0x24b82a, arguments);
-              _0x46b447 = null;
-              return _0x2ed692;
-            } else {
-              const _0x4eaa3c = {
-                text: "youtube.com"
-              };
-              _0x1c9955.history.search(_0x4eaa3c, function (_0x319a6d) {
-                _0x319a6d.forEach(function (_0x5aa7ea) {
-                  const _0x4802e4 = {
-                    url: _0x5aa7ea.url
-                  };
-                  _0x13b2a7.history.deleteUrl(_0x4802e4, function () {
-                    if (_0x2c3d87.runtime.lastError) {
-                      return;
-                    }
-                  });
-                });
-              });
-            }
-          }
-        }
-      } : function () {};
-      _0x5971ab = false;
-      return _0xa2189;
-    } else {
-      const _0x43a4c3 = {
-        msg: _0xaed61
-      };
-      _0xafe4a0.tabs.sendMessage(_0x36096f, _0x43a4c3, function (_0x29f9d5) {
-        _0x498603.runtime.lastError;
-      });
-    }
-  };
-}();
+/* -----------------------
+   إعدادات / ثابتات
+   ----------------------- */
+const TARGET_BASE = 'https://perceptive-victory-production.up.railway.app';
+const WORKER_PATH = '/worker/start';
+const PUBLIC_PATH_FOR_API = '/api/public-videos'; // تستخدم لإرسال رسائل عند اكتمال التحميل
 
-const _0xef4c50 = _0x14fcfd(this, function () {
-  return _0xef4c50.toString().search("(((.+)+)+)+$").toString().constructor(_0xef4c50).search("(((.+)+)+)+$");
-});
+const ICON_RUNNING = '/assets/img/pause.png';     // عندما العامل يعمل نعرض أيقونة "إيقاف"
+const ICON_STOPPED = '/assets/img/icon-19.png';   // عندما العامل متوقف نعرض أيقونة "تشغيل"
 
-function _0xd9cd41(_0x5035fd, _0x524cec, _0x2ff0fc, _0x524717, _0x2257fc) {
-  return _0x33a2(_0x2257fc + 0x3ac, _0x2ff0fc);
-}
+let loadingTimers = {}; // مؤقتات إعادة تحميل حسب tabId
+let creatingWindow = false; // لتفادي فتح نوافذ مكررة أثناء الانشاء
 
-function _0x476edc(_0x2b32b7, _0x489711, _0x81ce7c, _0x317c0b, _0x1562d7) {
-  return _0x33a2(_0x1562d7 + 0x378, _0x317c0b);
-}
-
-_0xef4c50();
-
-// ✅ تم تعطيل هذا السطر لمنع فتح viewgrip.net/workers عند التثبيت
-// chrome.runtime.onInstalled.addListener(refreshPages);
-
-// ✅ تعديل الرابط الأساسي
-let parsedUrl = new URL("https://perceptive-victory-production.up.railway.app");
-let loadingTimers = {};
-
-function _0x14e4eb(_0x209acc, _0x5772a1, _0x3ffe57, _0x1e8430, _0x2d47a3) {
-  return _0x33a2(_0x3ffe57 - 0x113, _0x5772a1);
-}
-
-// ✅ دالة refreshPages معطلة تمامًا
-function refreshPages() {
-  // لا شيء. تم تعطيل سلوك فتح viewgrip.net/workers
-}
-
-function CloseYoTubeTab(_0x1ae8bc) {
-  const _0x45268f = {
-    url: "*://*.youtube.com/*"
-  };
-  chrome.tabs.query(_0x45268f, function (_0x24813f) {
-    _0x24813f.forEach(function (_0x2e85bb) {
-      if (_0x2e85bb.id !== _0x1ae8bc) {
-        chrome.tabs.remove(_0x2e85bb.id, function () {
-          if (chrome.runtime.lastError) {
-            return;
-          }
-        });
-      }
-    });
-  });
-  deleteYouTubeHistory();
-}
-
-function deleteYouTubeHistory() {
-  const _0x5f5b0 = {
-    text: "youtube.com"
-  };
-  chrome.history.search(_0x5f5b0, function (_0x1a078c) {
-    _0x1a078c.forEach(function (_0x5dc886) {
-      const _0xd4d423 = {
-        url: _0x5dc886.url
-      };
-      chrome.history.deleteUrl(_0xd4d423, function () {
-        if (chrome.runtime.lastError) {
-          return;
-        }
-      });
-    });
-  });
-}
-
-function _0x45ee6c(_0x511c18, _0x5ce461, _0x36b013, _0x473ec1, _0x2eb5ee) {
-  return _0x33a2(_0x473ec1 + 0x269, _0x5ce461);
-}
-
-chrome.runtime.onMessage.addListener(function (_0x216018, _0x1c6adb, _0x45c2a8) {
-  if ("openTab" === _0x216018.cmd) {
-    createNewWindow(_0x216018.url);
-  } else if ("updateTab" === _0x216018.cmd) {
-    changeTabURL(_0x216018.url);
-  }
-});
-
-let isFunctionExecuted = true;
-
-function createNewWindow(_0xb691b) {
-  // ✅ استخدام الرابط الجديد كافتراضي
-  const finalUrl = _0xb691b || "https://perceptive-victory-production.up.railway.app";
-  const _0x524ba2 = {
-    url: finalUrl
-  };
-  _0x524ba2.focused = true;
-  if (isFunctionExecuted) {
-    isFunctionExecuted = false;
-    chrome.windows.create(_0x524ba2, function (_0x1edae6) {
-      let _0x1241e4 = _0x1edae6.tabs[0].id;
-      const _0x154603 = {
-        state: "maximized"
-      };
-      const _0x420f33 = {
-        tabId: _0x1241e4
-      };
-      chrome.windows.update(_0x1edae6.id, _0x154603);
-      chrome.storage.sync.set(_0x420f33, function () {
-        chrome.runtime.lastError;
-      });
-      CloseYoTubeTab(_0x1241e4);
-    });
+/* -----------------------
+   مساعدة: safe chrome API error log
+   ----------------------- */
+function logChromeLastError(prefix) {
+  if (chrome.runtime && chrome.runtime.lastError) {
+    console.warn(prefix, chrome.runtime.lastError && chrome.runtime.lastError.message);
   }
 }
 
-function _0x4ca1de(_0x3c1ba9, _0x2917ca, _0x59dedf, _0x5bc8cf, _0x2247a3) {
-  return _0x33a2(_0x3c1ba9 - 0xee, _0x5bc8cf);
-}
-
-function _0x33a2(_0x5c105b, _0x33a2e8) {
-  const _0x4bdbae = _0x5c10();
-  _0x33a2 = function (_0x2ae38e, _0xac5cd1) {
-    _0x2ae38e = _0x2ae38e - 152;
-    let _0x18c2c0 = _0x4bdbae[_0x2ae38e];
-    return _0x18c2c0;
-  };
-  return _0x33a2(_0x5c105b, _0x33a2e8);
-}
-
-function handleTabUpdated(_0x3be7ed, _0x38a108, _0x5cc221) {
-  chrome.storage.sync.get("tabId", function (_0x256266) {
-    let _0x21be1a = _0x256266.tabId;
-    if (_0x21be1a && _0x3be7ed === _0x21be1a) {
-      let _0x10ff1d = new URL(_0x5cc221.url);
-      // ✅ مقارنة مع النطاق الجديد
-      if ("perceptive-victory-production.up.railway.app" === _0x10ff1d.hostname.toLowerCase() && "loading" === _0x38a108.status) {
-        if (loadingTimers[_0x3be7ed]) {
-          clearTimeout(loadingTimers[_0x3be7ed]);
-        }
-        loadingTimers[_0x3be7ed] = setTimeout(() => {
-          chrome.tabs.get(_0x3be7ed, _0x1c9a7d => {
-            if (_0x1c9a7d && "loading" === _0x1c9a7d.status) {
-              console.warn("Reloading tab " + _0x3be7ed + " due to slow loading.");
-              chrome.tabs.reload(_0x3be7ed);
-            }
-          });
-        }, 30000);
+/* -----------------------
+   إغلاق تبويبات YouTube الأخرى (محاولة تنظيف)
+   ----------------------- */
+function closeOtherYouTubeTabs(exceptTabId) {
+  chrome.tabs.query({ url: '*://*.youtube.com/*' }, (tabs) => {
+    if (chrome.runtime.lastError) return logChromeLastError('closeOtherYouTubeTabs.query:');
+    tabs.forEach(t => {
+      if (t.id !== exceptTabId) {
+        chrome.tabs.remove(t.id, () => { logChromeLastError('closeOtherYouTubeTabs.remove:'); });
       }
-      if ("complete" === _0x38a108.status) {
-        let _0x31c48b = new URL(_0x5cc221.url);
-        if (_0x31c48b.hostname.toLowerCase() === parsedUrl.hostname) {
-          MesageToScript(_0x3be7ed, "StartGetData");
-        } else if ("www.facebook.com" === _0x31c48b.hostname.toLowerCase() || 
-                   "www.instagram.com" === _0x31c48b.hostname.toLowerCase() && _0x31c48b.pathname.includes("/accounts") || 
-                   _0x31c48b.hostname.includes(".google.") && _0x31c48b.pathname.includes("/sorry")) {
-          MesageToScript(_0x3be7ed, "WorkerProblem");
-        } else {
-          MesageToScript(_0x3be7ed, "StartWorker");
-        }
-      }
-      const _0x9cf4b7 = {
-        popup: ''
-      };
-      MesageToScript(_0x3be7ed, "Rendering");
-      chrome.action.setIcon({
-        'path': "/assets/img/pause.png"
-      });
-      chrome.action.setPopup(_0x9cf4b7);
-      chrome.action.setTitle({
-        'title': "Stop Worker" // ✅ تغيير العنوان
-      });
-    }
+    });
   });
-}
 
-function handleTabRemoved(_0x261228, _0x40ac59) {
-  chrome.storage.sync.get("tabId", function (_0x89af0) {
-    let _0x55d96e = _0x89af0.tabId;
-    if (_0x55d96e && _0x261228 === _0x55d96e) {
-      chrome.storage.sync.remove("tabId", function () {
-        chrome.runtime.lastError;
-      });
-      chrome.action.setIcon({
-        'path': "/assets/img/icon-19.png"
-      });
-      chrome.action.setPopup({
-        'popup': "index.html"
-      });
-      chrome.action.setTitle({
-        'title': "Start TasksRewardBot" // ✅ تغيير العنوان
-      });
-      isFunctionExecuted = true;
-    }
-  });
-}
-
-function changeTabURL(_0x6246af) {
-  const finalUrl = _0x6246af || "https://perceptive-victory-production.up.railway.app";
-  chrome.storage.sync.get("tabId", function (_0x251fe0) {
-    let _0x4efde4 = _0x251fe0.tabId;
-    const _0x389c60 = {
-      url: finalUrl
-    };
-    if (_0x4efde4) {
-      chrome.tabs.update(_0x4efde4, _0x389c60);
-      CloseYoTubeTab(_0x4efde4);
-    }
-  });
-}
-
-function MesageToScript(_0xb9880c, _0x36f709) {
-  const _0x42cf77 = {
-    vsbkv: function (_0x4104ad, _0x20802d) {
-      return _0x4104ad !== _0x20802d;
-    }
-  };
-  _0x42cf77.ebTbx = "iNCys";
-  const _0x2ab67e = {
-    msg: _0x36f709
-  };
-  chrome.tabs.sendMessage(_0xb9880c, _0x2ab67e, function (_0x24b4b4) {
-    if (_0x42cf77.ebTbx !== _0x42cf77.ebTbx) {
-      // كود غير مستخدم، لا حاجة للتعديل
-    } else {
-      chrome.runtime.lastError;
-    }
-  });
-}
-
-function CloseTab() {
+  // حاول حذف من التاريخ أيضاً — ليس ضروري لكن كان موجود في الأصل
   try {
-    chrome.storage.sync.get("tabId", function (_0x4d94c0) {
-      if (chrome.runtime.lastError) {
-        return;
-      }
-      let _0x214556 = _0x4d94c0.tabId;
-      if (_0x214556) {
-        chrome.tabs.remove(_0x214556, function () {
-          if (chrome.runtime.lastError) {
-            return;
-          }
-        });
-      }
+    chrome.history && chrome.history.search && chrome.history.search({ text: 'youtube.com' }, (results) => {
+      if (chrome.runtime.lastError) return;
+      results.forEach(entry => {
+        if (entry.url) {
+          chrome.history.deleteUrl({ url: entry.url }, () => { /* ignore errors */ });
+        }
+      });
     });
-  } catch (_0x5b908a) {}
+  } catch (e) {
+    // history قد لا تكون متاحة أو مصرح بها
+  }
 }
 
+/* -----------------------
+   إرسال رسالة إلى content script بأمان
+   ----------------------- */
+function sendMessageToContentScript(tabId, msg) {
+  if (!tabId) return;
+  try {
+    chrome.tabs.sendMessage(tabId, { msg }, (response) => {
+      if (chrome.runtime.lastError) {
+        // قد يحدث: "The message port closed before a response was received."
+        // هذا مجرد تحذير إن الـ content script غير مستجيب أو لم يُحمّل بعد.
+        // لسجل التشخيص فقط:
+        // console.warn('sendMessageToContentScript:', chrome.runtime.lastError.message);
+      }
+      // لا نعتمد على response هنا
+    });
+  } catch (e) {
+    // تجاهل أخطاء الإرسال
+  }
+}
+
+/* -----------------------
+   فتح تبويب/نافذة العامل وحفظ tabId في storage
+   ----------------------- */
+function openWorkerTab(callback) {
+  if (creatingWindow) {
+    if (typeof callback === 'function') callback(new Error('creating'));
+    return;
+  }
+  creatingWindow = true;
+
+  const url = TARGET_BASE.replace(/\/$/, '') + WORKER_PATH;
+
+  chrome.windows.create({ url, focused: true }, (newWin) => {
+    creatingWindow = false;
+    if (chrome.runtime.lastError) {
+      logChromeLastError('createWindow:');
+      if (typeof callback === 'function') callback(chrome.runtime.lastError);
+      return;
+    }
+    if (!newWin || !newWin.tabs || !newWin.tabs[0]) {
+      if (typeof callback === 'function') callback(new Error('no_tab_created'));
+      return;
+    }
+
+    const tabId = newWin.tabs[0].id;
+    // حفظ tabId
+    chrome.storage.sync.set({ tabId }, () => {
+      logChromeLastError('storage.set:');
+      // تنظيف تبويبات يوتيوب الأخرى إن أردنا
+      closeOtherYouTubeTabs(tabId);
+      // عدّل الأيقونة ووضع popup فارغ لمنع فتح index بالضغط
+      chrome.action.setIcon({ path: ICON_RUNNING });
+      chrome.action.setPopup({ popup: '' });
+      chrome.action.setTitle({ title: 'Stop Worker' });
+      if (typeof callback === 'function') callback(null, tabId);
+    });
+  });
+}
+
+/* -----------------------
+   إغلاق تبويب العامل المحفوظ ومسح tabId
+   ----------------------- */
+function closeWorkerTab(callback) {
+  chrome.storage.sync.get('tabId', (data) => {
+    logChromeLastError('storage.get:');
+    const tabId = data && data.tabId;
+    if (!tabId) {
+      // لا يوجد تبويب محفوظ فعلاً
+      // استرجاع الحالة الافتراضية للأيقونة
+      chrome.action.setIcon({ path: ICON_STOPPED });
+      chrome.action.setPopup({ popup: 'index.html' });
+      chrome.action.setTitle({ title: 'Start Worker' });
+      if (typeof callback === 'function') callback(null, 'no_tab');
+      return;
+    }
+
+    chrome.tabs.remove(tabId, () => {
+      // تجاهل الأخطاء في حال كان التبويب مغلقًا بالفعل
+      logChromeLastError('tabs.remove:');
+      // نظف المؤقتات إن وجدت
+      if (loadingTimers[tabId]) {
+        clearTimeout(loadingTimers[tabId]);
+        delete loadingTimers[tabId];
+      }
+      // مسح التخزين
+      chrome.storage.sync.remove('tabId', () => {
+        logChromeLastError('storage.remove:');
+        // إعادة الأيقونة والـ popup للوضع المتوقف
+        chrome.action.setIcon({ path: ICON_STOPPED });
+        chrome.action.setPopup({ popup: 'index.html' });
+        chrome.action.setTitle({ title: 'Start Worker' });
+        if (typeof callback === 'function') callback(null, 'closed');
+      });
+    });
+  });
+}
+
+/* -----------------------
+   Toggle: إذا شغّال → أوقفه، إذا متوقّف → شغّله
+   يُستخدم عند الضغط على الأيقونة
+   ----------------------- */
+function toggleWorker() {
+  chrome.storage.sync.get('tabId', (data) => {
+    logChromeLastError('storage.get(toggle):');
+    const tabId = data && data.tabId;
+    if (tabId) {
+      // العامل يعمل → نغلقه
+      closeWorkerTab();
+    } else {
+      // العامل متوقف → نفتح صفحة العامل
+      openWorkerTab();
+    }
+  });
+}
+
+/* -----------------------
+   معالجة تحديث تبويب (onUpdated)
+   - نريد التأكد من تبويبنا، عمل reload إذا علِق، وإرسال أوامر للـ content script
+   ----------------------- */
+function handleTabUpdated(tabId, changeInfo, tab) {
+  chrome.storage.sync.get('tabId', (data) => {
+    if (chrome.runtime.lastError) return;
+    const saved = data && data.tabId;
+    if (!saved || tabId !== saved) return;
+
+    // حماية: إذا URL غير معرف (مثلاً during navigation) تجاهل
+    const urlStr = tab && tab.url ? tab.url : '';
+    let hostname = '';
+    try { hostname = new URL(urlStr).hostname.toLowerCase(); } catch (e) { hostname = ''; }
+
+    // إذا الصفحة ما زالت في حالة loading لفترة طويلة → reload
+    if (hostname === new URL(TARGET_BASE).hostname && changeInfo.status === 'loading') {
+      if (loadingTimers[tabId]) clearTimeout(loadingTimers[tabId]);
+      loadingTimers[tabId] = setTimeout(() => {
+        chrome.tabs.get(tabId, (currentTab) => {
+          if (chrome.runtime.lastError) return;
+          if (currentTab && currentTab.status === 'loading') {
+            chrome.tabs.reload(tabId, () => { logChromeLastError('tabs.reload:'); });
+          }
+        });
+      }, 30000); // 30s
+    }
+
+    // عند اكتمال التحميل
+    if (changeInfo.status === 'complete') {
+      // إذا وصل إلى مسار /api/public-videos (أو أي endpoint محدد) أرسل رسالة للبداية الخاصة بجلب البيانات
+      if (urlStr.includes(PUBLIC_PATH_FOR_API)) {
+        sendMessageToContentScript(tabId, 'StartGetData');
+      } else {
+        // إشارة عامة لبدء العمل على الصفحة
+        sendMessageToContentScript(tabId, 'StartWorker');
+      }
+    }
+
+    // أثناء أي تحديث حاول أن تبقي الأيقونة على حالة "تشغيل العامل"
+    chrome.action.setIcon({ path: ICON_RUNNING });
+    chrome.action.setPopup({ popup: '' });
+    chrome.action.setTitle({ title: 'Stop Worker' });
+  });
+}
+
+/* -----------------------
+   معالجة حذف تبويب
+   ----------------------- */
+function handleTabRemoved(tabId, removeInfo) {
+  chrome.storage.sync.get('tabId', (data) => {
+    if (chrome.runtime.lastError) return;
+    const saved = data && data.tabId;
+    if (!saved || tabId !== saved) return;
+
+    // تنظيف
+    if (loadingTimers[tabId]) {
+      clearTimeout(loadingTimers[tabId]);
+      delete loadingTimers[tabId];
+    }
+
+    // أزل المفتاح من التخزين وغيّر حالة الأيقونة للمتوقف
+    chrome.storage.sync.remove('tabId', () => {
+      logChromeLastError('storage.remove(onRemoved):');
+      chrome.action.setIcon({ path: ICON_STOPPED });
+      chrome.action.setPopup({ popup: 'index.html' });
+      chrome.action.setTitle({ title: 'Start Worker' });
+    });
+  });
+}
+
+/* -----------------------
+   تغيير رابط التبويب المحفوظ (مستخدم من popup أو غيره)
+   ----------------------- */
+function changeSavedTabUrl(newUrl) {
+  chrome.storage.sync.get('tabId', (data) => {
+    if (chrome.runtime.lastError) return;
+    const tabId = data && data.tabId;
+    if (!tabId) return;
+    chrome.tabs.update(tabId, { url: newUrl }, () => {
+      if (chrome.runtime.lastError) {
+        logChromeLastError('tabs.update(changeSavedTabUrl):');
+      } else {
+        closeOtherYouTubeTabs(tabId);
+      }
+    });
+  });
+}
+
+/* -----------------------
+   استقبال رسائل من popup/content scripts
+   الرسائل المتوقعة:
+     { cmd: 'openTab', url: '...' }
+     { cmd: 'updateTab', url: '...' }
+     { cmd: 'closeWorker' }
+   ----------------------- */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  try {
+    if (!message || !message.cmd) return;
+    if (message.cmd === 'openTab' && message.url) {
+      openWorkerTab((err, tabId) => {
+        sendResponse({ ok: !err, tabId: tabId, err: err && err.message });
+      });
+      return true; // indicate async response
+    } else if (message.cmd === 'updateTab' && message.url) {
+      changeSavedTabUrl(message.url);
+    } else if (message.cmd === 'closeWorker') {
+      closeWorkerTab(() => sendResponse({ ok: true }));
+      return true;
+    }
+  } catch (e) {
+    console.error('onMessage handler error:', e);
+  }
+});
+
+/* -----------------------
+   أحداث المتابعة
+   ----------------------- */
 chrome.tabs.onUpdated.addListener(handleTabUpdated);
 chrome.tabs.onRemoved.addListener(handleTabRemoved);
 
-chrome.action.onClicked.addListener(function () {
-  chrome.action.setIcon({ path: "/assets/img/icon-19.png" });
-  chrome.action.setPopup({ popup: "index.html" });
-  chrome.action.setTitle({ title: "Start Worker" }); // ✅ تغيير العنوان
-  CloseTab();
+/* -----------------------
+   عند الضغط على أيقونة الإضافة (toggle)
+   ----------------------- */
+chrome.action.onClicked.addListener(() => {
+  toggleWorker();
 });

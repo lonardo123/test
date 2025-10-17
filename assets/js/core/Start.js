@@ -631,80 +631,71 @@
     } catch (e) { log('handleApiResponse err', e); startGetVideo = true; }
   }
 
-  /* =========================================================
-     التعامل عند وجود AjaxData في صفحة الفيديو:
-     - تُقرأ AjaxData من storage
-     - تُحوَّل لقيم normalized وتُمرَّر للمتابعة
-     ========================================================= */
-  async function handleVideoPageIfNeeded() {
-    let ajax = currentAjaxData;
-    if (!ajax) {
-      try {
-        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          ajax = await new Promise(res => chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null)));
-        } else {
-          ajax = JSON.parse(localStorage.getItem('AjaxData') || 'null');
-        }
-      } catch (e) { ajax = null; }
-    }
-
-    if (!ajax || !ajax.url) {
-      log("⚠️ لا توجد بيانات فيديو بعد.");
-      return;
-    }
-
-    setTimeout(() => {
-      log("▶️ بدء متابعة الفيديو الآن...");
-      const normalized = {
-        video_id: ajax.video_id || ajax.id || ajax.videoId,
-        duration: ajax.duration || ajax.required_watch_seconds || 30,
-        original_url: ajax.original_url || ajax.url || ajax.link
-      };
-      managePlaybackAndProgress(normalized);
-    }, 2000);
-  }
 /* =========================================================
-   أدوات إدارة المؤقتات والمراقبين (تُستخدم للإيقاف الكامل)
-   ========================================================= */
-window._trbTimers = window._trbTimers || new Set();
-window._trbObservers = window._trbObservers || [];
-window._trbAdObserver = window._trbAdObserver || null;
+   التعامل عند وجود AjaxData في صفحة الفيديو:
+   - تُقرأ AjaxData من storage
+   - تُحوَّل لقيم normalized وتُمرَّر للمتابعة
+========================================================= */
+async function handleVideoPageIfNeeded() {
+  let ajax = currentAjaxData;
+  if (!ajax) {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        ajax = await new Promise(res => chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null)));
+      } else {
+        ajax = JSON.parse(localStorage.getItem('AjaxData') || 'null');
+      }
+    } catch (e) { ajax = null; }
+  }
 
-/* إيقاف جميع المؤقتات */
+  if (!ajax || !ajax.url) {
+    log("⚠️ لا توجد بيانات فيديو بعد.");
+    return;
+  }
+
+  setTimeout(() => {
+    log("▶️ بدء متابعة الفيديو الآن...");
+    const normalized = {
+      video_id: ajax.video_id || ajax.id || ajax.videoId,
+      duration: ajax.duration || ajax.required_watch_seconds || 30,
+      original_url: ajax.original_url || ajax.url || ajax.link
+    };
+    managePlaybackAndProgress(normalized);
+  }, 2000);
+}
+
+/* =========================================================
+   إدارة المؤقتات والمراقبين
+========================================================= */
+const timers = new Set();
+const observers = new Set();
+
+function safeTimeout(fn, delay) {
+  const id = setTimeout(() => {
+    timers.delete(id);
+    fn();
+  }, delay);
+  timers.add(id);
+  return id;
+}
+
 function clearAllTimers() {
-  try {
-    for (const id of Array.from(window._trbTimers)) {
-      clearTimeout(id);
-      clearInterval(id);
-      window._trbTimers.delete(id);
-    }
-  } catch (err) {
-    console.warn('clearAllTimers failed:', err);
-  }
+  for (const t of timers) clearTimeout(t);
+  timers.clear();
 }
 
-/* فصل جميع المراقبين */
 function disconnectObservers() {
-  try {
-    for (const obs of window._trbObservers) {
-      if (obs && obs.disconnect) obs.disconnect();
-    }
-    window._trbObservers.length = 0;
-
-    if (window._trbAdObserver && window._trbAdObserver.disconnect) {
-      window._trbAdObserver.disconnect();
-      window._trbAdObserver = null;
-    }
-  } catch (err) {
-    console.warn('disconnectObservers failed:', err);
-  }
+  for (const obs of observers) obs.disconnect();
+  observers.clear();
 }
 
-/* ------------- دالة الإيقاف الكامل ------------- */
+/* =========================================================
+   دالة الإيقاف الكامل
+========================================================= */
 function stopAllCompletely() {
   try {
-    clearAllTimers(); // إيقاف كل التايمرات
-    disconnectObservers(); // فصل المراقبين
+    clearAllTimers();        // إيقاف كل التايمرات
+    disconnectObservers();   // فصل المراقبين
     stopped = true;
     alreadyStarted = false;
     log('✅ stopAllCompletely: تم إيقاف جميع العمليات والمؤقتات بنجاح.');
@@ -713,12 +704,13 @@ function stopAllCompletely() {
   }
 }
 
-/* ------------- التعامل مع الإغلاق والإنهاء ------------- */
+/* =========================================================
+   التعامل مع الإغلاق والإنهاء
+========================================================= */
 window.addEventListener('beforeunload', stopAllCompletely, { capture: true });
 window.addEventListener('unload', stopAllCompletely);
 window.addEventListener('pagehide', stopAllCompletely);
 
-// لا توقف التشغيل إذا المستخدم داخل صفحة فيديو من نظام TasksRewardBot
 document.addEventListener('visibilitychange', () => {
   const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
   if (document.hidden && !isVideoPage) {
@@ -726,30 +718,31 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-
-/* ------------- مراقبة DOM لضمان بقاء الشريط أثناء الفيديو فقط ------------- */
+/* =========================================================
+   مراقبة DOM — إبقاء الشريط أثناء الفيديو فقط
+========================================================= */
 const observer = new MutationObserver(() => {
   const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
   const bar = document.getElementById('trb-overlay');
 
   if (isVideoPage) {
-    // إذا كنا في صفحة فيديو ولا يوجد الشريط، أضفه
     if (!bar) {
       log('⚠️ الشريط اختفى أثناء الفيديو — إعادة إدخاله...');
       injectProgressBar();
     }
   } else {
-    // إذا لم نكن في صفحة فيديو، احذف الشريط نهائيًا
     if (bar) {
       log('ℹ️ المستخدم غادر صفحة الفيديو — إزالة الشريط.');
       bar.remove();
     }
   }
 });
-
 observer.observe(document.documentElement, { childList: true, subtree: true });
+observers.add(observer);
 
-/* ------------- إزالة الشريط عند إخفاء الصفحة أو الانتقال ------------- */
+/* =========================================================
+   إزالة الشريط عند الانتقال من الفيديو
+========================================================= */
 document.addEventListener('visibilitychange', () => {
   const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
   if (!isVideoPage && document.hidden) {
@@ -759,7 +752,9 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-/* ------------- بدء التشغيل (آمن) ------------- */
+/* =========================================================
+   بدء التشغيل (آمن)
+========================================================= */
 function tryStartIfWorkerPageSafely() {
   try {
     const ok = (typeof startIfWorkerPage === 'function')
@@ -768,7 +763,6 @@ function tryStartIfWorkerPageSafely() {
             && (typeof handleVideoPageIfNeeded === 'function');
 
     if (!ok) {
-      // إذا لم تكن الدوال جاهزة بعد، أعد المحاولة بعد قليل
       setTimeout(tryStartIfWorkerPageSafely, 200);
       return;
     }
@@ -778,7 +772,6 @@ function tryStartIfWorkerPageSafely() {
       log('Start.js loaded — ready.');
     } catch (innerErr) {
       console.error('startIfWorkerPage threw:', innerErr);
-      // إعادة المحاولة لمرة ثانية
       setTimeout(() => {
         try {
           startIfWorkerPage();
@@ -794,10 +787,11 @@ function tryStartIfWorkerPageSafely() {
   }
 }
 
-// ربط بمحمل الصفحة: إذا كانت الصفحة محملة بالفعل نبدأ فوراً، وإلا ننتظر load
+// ⏳ بدء التشغيل عند التحميل الكامل
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   tryStartIfWorkerPageSafely();
 } else {
   window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
 }
-})();
+
+})(); // ← إغلاق الـ IIFE الرئيسي

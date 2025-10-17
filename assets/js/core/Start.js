@@ -664,30 +664,31 @@
     }, 2000);
   }
 /* ------------- أدوات إيقاف مؤقتات ومراقبين ------------- */
-const timers = new Set();
-const observers = [];
-let adObserver = null;
+window._trbTimers = window._trbTimers || new Set();
+window._trbObservers = window._trbObservers || [];
+window._trbAdObserver = window._trbAdObserver || null;
 
 function clearAllTimers() {
-  for (const id of Array.from(timers)) {
+  for (const id of Array.from(window._trbTimers)) {
     try {
       clearTimeout(id);
       clearInterval(id);
     } catch (e) {}
-    timers.delete(id);
+    window._trbTimers.delete(id);
   }
 }
 
 function disconnectObservers() {
-  for (const o of observers) {
+  for (const o of window._trbObservers) {
     try { o.disconnect && o.disconnect(); } catch (e) {}
   }
-  observers.length = 0;
-  if (adObserver) {
-    try { adObserver.disconnect(); } catch (e) {}
-    adObserver = null;
+  window._trbObservers.length = 0;
+  if (window._trbAdObserver) {
+    try { window._trbAdObserver.disconnect(); } catch (e) {}
+    window._trbAdObserver = null;
   }
 }
+
 
   /* ------------- دالة الإيقاف الكامل ------------- */
   function stopAllCompletely() {

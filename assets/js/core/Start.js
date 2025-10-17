@@ -29,7 +29,7 @@
   let currentAjaxData = null;   // بيانات الفيديو الحالية (AjaxData)
 
   /* ------------- أدوات مساعدة عامة ------------- */
-  const log = (...a) => { try { console.log('[Start_fixed]', ...a); } catch (e) {} };
+  const log = (...a) => { try { console.log('[Start]', ...a); } catch (e) {} };
 
   // wrappers آمنة على setTimeout/setInterval لتتبعها لاحقًا
   function safeTimeout(fn, ms) {
@@ -66,35 +66,73 @@
     }
   }
 
-  /* ------------- قراءة user_id (من chrome.storage أو localStorage أو كوكي) ------------- */
-  async function readUserId() {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-        const r = await new Promise((resolve) => {
-          chrome.storage.local.get(['user_id'], (res) => {
-            if (chrome.runtime?.lastError) return resolve(null);
-            resolve(res?.user_id ? String(res.user_id).trim() : null);
-          });
+  /* ------------------------------------------------------------------
+   unifiedUser.js  —  يستخدمه Start_fixed.js أو صفحة الفيديوهات
+   الغرض: قراءة user_id وبيانات المستخدم من نفس النظام الذي
+   تستخدمه صفحة الواجهة (index.js)
+------------------------------------------------------------------ */
+
+async function readUserId() {
+  try {
+    // 🔹 أولاً: نحاول من chrome.storage.local → userData.user_id
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const localRes = await new Promise((resolve) => {
+        chrome.storage.local.get(['userData'], (res) => {
+          if (chrome.runtime?.lastError) return resolve(null);
+          resolve(res?.userData?.user_id || null);
         });
-        if (r) return r;
-      }
-    } catch (e) { log('readUserId chrome err', e); }
+      });
+      if (localRes) return String(localRes).trim();
+    }
 
-    try {
-      const v = localStorage.getItem('user_id');
-      if (v && String(v).trim()) return String(v).trim();
-    } catch (e) { log('readUserId localStorage err', e); }
+    // 🔹 ثانيًا: نحاول من chrome.storage.sync → uniqueID
+    const syncRes = await new Promise((resolve) => {
+      chrome.storage.sync.get(['uniqueID'], (res) => {
+        if (chrome.runtime?.lastError) return resolve(null);
+        resolve(res?.uniqueID || null);
+      });
+    });
+    if (syncRes) return String(syncRes).trim();
 
-    try {
-      const name = 'user_id';
-      const cookies = `; ${document.cookie || ''}`;
-      const parts = cookies.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-    } catch (e) { log('readUserId cookie err', e); }
-
-    return null;
+  } catch (err) {
+    log('readUserId chrome err', err);
   }
 
+  // 🔹 احتياطي: نحاول من localStorage أو cookie
+  try {
+    const v = localStorage.getItem('user_id');
+    if (v && String(v).trim()) return String(v).trim();
+  } catch (e) { log('readUserId localStorage err', e); }
+
+  try {
+    const name = 'user_id';
+    const cookies = `; ${document.cookie || ''}`;
+    const parts = cookies.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+  } catch (e) { log('readUserId cookie err', e); }
+
+  return null;
+}
+
+/* ------------------------------------------------------------------
+   قراءة بيانات المستخدم كاملة (fullname, balance, membership)
+------------------------------------------------------------------ */
+async function readUserProfile() {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+      const res = await new Promise((resolve) => {
+        chrome.storage.local.get(['userData'], (r) => {
+          if (chrome.runtime?.lastError) return resolve(null);
+          resolve(r?.userData || null);
+        });
+      });
+      if (res) return res;
+    }
+  } catch (e) {
+    log('readUserProfile err', e);
+  }
+  return null;
+}
   /* =========================================================
      توليد رابط مغلف عشوائي من المصادر (Facebook, Google, Instagram)
      هذا يسمح بتحويل الرابط الأصلي إلى رابط redirect "معقول".

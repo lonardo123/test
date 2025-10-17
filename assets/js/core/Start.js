@@ -663,45 +663,55 @@
       managePlaybackAndProgress(normalized);
     }, 2000);
   }
-/* ------------- أدوات إيقاف مؤقتات ومراقبين ------------- */
+/* =========================================================
+   أدوات إدارة المؤقتات والمراقبين (تُستخدم للإيقاف الكامل)
+   ========================================================= */
 window._trbTimers = window._trbTimers || new Set();
 window._trbObservers = window._trbObservers || [];
 window._trbAdObserver = window._trbAdObserver || null;
 
+/* إيقاف جميع المؤقتات */
 function clearAllTimers() {
-  for (const id of Array.from(window._trbTimers)) {
-    try {
+  try {
+    for (const id of Array.from(window._trbTimers)) {
       clearTimeout(id);
       clearInterval(id);
-    } catch (e) {}
-    window._trbTimers.delete(id);
-  }
-}
-
-function disconnectObservers() {
-  for (const o of window._trbObservers) {
-    try { o.disconnect && o.disconnect(); } catch (e) {}
-  }
-  window._trbObservers.length = 0;
-  if (window._trbAdObserver) {
-    try { window._trbAdObserver.disconnect(); } catch (e) {}
-    window._trbAdObserver = null;
-  }
-}
-
-
-  /* ------------- دالة الإيقاف الكامل ------------- */
-  function stopAllCompletely() {
-    try {
-      clearAllTimers(); // إيقاف كل التايمرات
-      disconnectObservers(); // فصل المراقبين
-      stopped = true;
-      alreadyStarted = false;
-      log('✅ stopAllCompletely: تم إيقاف جميع العمليات والمؤقتات بنجاح.');
-    } catch (e) {
-      console.error('stopAllCompletely error:', e);
+      window._trbTimers.delete(id);
     }
+  } catch (err) {
+    console.warn('clearAllTimers failed:', err);
   }
+}
+
+/* فصل جميع المراقبين */
+function disconnectObservers() {
+  try {
+    for (const obs of window._trbObservers) {
+      if (obs && obs.disconnect) obs.disconnect();
+    }
+    window._trbObservers.length = 0;
+
+    if (window._trbAdObserver && window._trbAdObserver.disconnect) {
+      window._trbAdObserver.disconnect();
+      window._trbAdObserver = null;
+    }
+  } catch (err) {
+    console.warn('disconnectObservers failed:', err);
+  }
+}
+
+/* ------------- دالة الإيقاف الكامل ------------- */
+function stopAllCompletely() {
+  try {
+    clearAllTimers(); // إيقاف كل التايمرات
+    disconnectObservers(); // فصل المراقبين
+    stopped = true;
+    alreadyStarted = false;
+    log('✅ stopAllCompletely: تم إيقاف جميع العمليات والمؤقتات بنجاح.');
+  } catch (e) {
+    console.error('stopAllCompletely error:', e);
+  }
+}
 
 /* ------------- التعامل مع الإغلاق والإنهاء ------------- */
 window.addEventListener('beforeunload', stopAllCompletely, { capture: true });

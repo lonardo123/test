@@ -751,6 +751,34 @@ document.addEventListener('visibilitychange', () => {
     stopAllCompletely();
   }
 });
+/* ------------- بدء التشغيل ------------- */
+function startIfWorkerPage() {
+  try {
+    if (alreadyStarted) return;
+    alreadyStarted = true;
+
+    const path = window.location.pathname || '';
+
+    // إذا كانت صفحة العامل /worker/start فنحضر الفيديوهات (ولا نكرر إدخال الشريط إن لم تريده هناك)
+    if (path === '/worker/start' || path.endsWith('/worker/start')) {
+      // تفعيل الشريط هنا إذا كنت تريد رؤيته في صفحة start
+      // injectProgressBar();            // ← فكّ التعليق إذا تريد الشريط في صفحة /worker/start
+      setBarMessage('جارٍ جلب فيديو للمشاهدة...');
+      safeTimeout(getVideoFlow, 600);
+    } else {
+      // في صفحات الفيديو: أدخِل الشريط وابدأ المتابعة
+      safeTimeout(() => {
+        injectProgressBar();
+        handleVideoPageIfNeeded();
+      }, 600);
+    }
+  } catch (e) {
+    console.error('startIfWorkerPage error:', e);
+    // إعادة الضبط حتى يمكن إعادة المحاولة لاحقًا
+    alreadyStarted = false;
+    safeTimeout(() => { tryStartIfWorkerPageSafely(); }, 400);
+  }
+}
 
 /* =========================================================
    بدء التشغيل (آمن)

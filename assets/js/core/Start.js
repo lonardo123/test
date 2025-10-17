@@ -664,28 +664,6 @@
     }, 2000);
   }
 
- /* ------------- بدء التشغيل ------------- */
-function startIfWorkerPage() {
-  if (alreadyStarted) return;
-  alreadyStarted = true;
-
-  const path = window.location.pathname || '';
-  if (path === '/worker/start' || path.endsWith('/worker/start')) {
-    injectProgressBar();
-    setBarMessage('جارٍ جلب فيديو للمشاهدة...');
-    safeTimeout(getVideoFlow, 600);
-  } else {
-    safeTimeout(() => {
-      injectProgressBar();
-      handleVideoPageIfNeeded();
-    }, 600);
-  }
-}
-
-startIfWorkerPage();
-log('Start.js loaded — ready.');
-
-
   /* ------------- دالة الإيقاف الكامل ------------- */
   function stopAllCompletely() {
     try {
@@ -744,4 +722,49 @@ document.addEventListener('visibilitychange', () => {
     stopAllCompletely();
   }
 });
-})();
+
+ /* ------------- بدء التشغيل (آمن) ------------- */
+function tryStartIfWorkerPageSafely() {
+  try {
+    // تحقق أن الدوال الأساسية موجودة
+    const ok = (typeof startIfWorkerPage === 'function')
+            && (typeof safeTimeout === 'function' || typeof setTimeout === 'function')
+            && (typeof injectProgressBar === 'function')
+            && (typeof handleVideoPageIfNeeded === 'function');
+
+    if (!ok) {
+      // إذا لم تكن الدوال جاهزة بعد، أعد المحاولة بعد قليل
+      // نستخدم setTimeout عادي لأن safeTimeout ربما غير معرف في هذه النقطة
+      setTimeout(tryStartIfWorkerPageSafely, 200);
+      return;
+    }
+
+    // استدعاء التشغيل داخل try/catch لالتقاط أي استثناء داخلي
+    try {
+      startIfWorkerPage();
+      log('Start.js loaded — ready.');
+    } catch (innerErr) {
+      console.error('startIfWorkerPage threw:', innerErr);
+      // أعادة المحاولة مؤقتًا (حصرية للمحاولة الواحدة)
+      setTimeout(() => {
+        try {
+          startIfWorkerPage();
+          log('Start.js loaded — ready. (retry)');
+        } catch (e) {
+          console.error('startIfWorkerPage retry failed:', e);
+        }
+      }, 500);
+    }
+  } catch (err) {
+    // خطأ عام في الفحص — أعد المحاولة بعد 300ms
+    console.error('tryStartIfWorkerPageSafely error:', err);
+    setTimeout(tryStartIfWorkerPageSafely, 300);
+  }
+}
+
+// ربط بمحمل الصفحة: إذا كانت الصفحة محملة بالفعل نبدأ فوراً، وإلا ننتظر load
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  tryStartIfWorkerPageSafely();
+} else {
+  window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
+}

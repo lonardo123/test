@@ -28,111 +28,122 @@
   let adObserver = null;
   let currentAjaxData = null;   // بيانات الفيديو الحالية (AjaxData)
 
-  /* ------------- أدوات مساعدة عامة ------------- */
-  const log = (...a) => { try { console.log('[Start]', ...a); } catch (e) {} };
+/* ======================================================
+   TasksRewardBot - Start.js
+   تهيئة صفحة العامل وربطها ببيانات المستخدم
+====================================================== */
 
-  // wrappers آمنة على setTimeout/setInterval لتتبعها لاحقًا
-  function safeTimeout(fn, ms) {
-    const id = setTimeout(() => {
-      timers.delete(id);
-      try { fn(); } catch (e) {}
-    }, ms);
-    timers.add(id);
-    return id;
-  }
-  function safeInterval(fn, ms) {
-    const id = setInterval(fn, ms);
-    timers.add(id);
-    return id;
+(async function() {
+  const API_BASE = 'https://perceptive-victory-production.up.railway.app';
+  const API_PROFILE = `${API_BASE}/api/user/profile?user_id=`;
+
+  /* ---------------- أدوات مساعدة ---------------- */
+  function log(...args) {
+    console.log('[TasksRewardBot]', ...args);
   }
 
-  // إلغاء كل المؤقتات (يُستخدم في stopAllCompletely)
-  function clearAllTimers() {
-    for (const id of Array.from(timers)) {
-      try { clearTimeout(id); clearInterval(id); } catch (e) {}
-      timers.delete(id);
-    }
-  }
+  async function readUserId() {
+    try {
+      // 1️⃣ من chrome.storage.local → userData.user_id
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const localRes = await new Promise((resolve) => {
+          chrome.storage.local.get(['userData'], (res) => {
+            if (chrome.runtime?.lastError) return resolve(null);
+            resolve(res?.userData?.user_id || null);
+          });
+        });
+        if (localRes) return String(localRes).trim();
+      }
 
-  // فصل أي observers تم تسجيلها
-  function disconnectObservers() {
-    for (const o of observers) {
-      try { o.disconnect && o.disconnect(); } catch (e) {}
-    }
-    observers.length = 0;
-    if (adObserver) {
-      try { adObserver.disconnect(); } catch (e) {}
-      adObserver = null;
-    }
-  }
-
-  /* ------------------------------------------------------------------
-   unifiedUser.js  —  يستخدمه Start_fixed.js أو صفحة الفيديوهات
-   الغرض: قراءة user_id وبيانات المستخدم من نفس النظام الذي
-   تستخدمه صفحة الواجهة (index.js)
------------------------------------------------------------------- */
-
-async function readUserId() {
-  try {
-    // 🔹 أولاً: نحاول من chrome.storage.local → userData.user_id
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      const localRes = await new Promise((resolve) => {
-        chrome.storage.local.get(['userData'], (res) => {
+      // 2️⃣ من chrome.storage.sync → uniqueID
+      const syncRes = await new Promise((resolve) => {
+        chrome.storage.sync.get(['uniqueID'], (res) => {
           if (chrome.runtime?.lastError) return resolve(null);
-          resolve(res?.userData?.user_id || null);
+          resolve(res?.uniqueID || null);
         });
       });
-      if (localRes) return String(localRes).trim();
+      if (syncRes) return String(syncRes).trim();
+
+    } catch (err) {
+      log('readUserId chrome err', err);
     }
 
-    // 🔹 ثانيًا: نحاول من chrome.storage.sync → uniqueID
-    const syncRes = await new Promise((resolve) => {
-      chrome.storage.sync.get(['uniqueID'], (res) => {
-        if (chrome.runtime?.lastError) return resolve(null);
-        resolve(res?.uniqueID || null);
-      });
-    });
-    if (syncRes) return String(syncRes).trim();
+    // 3️⃣ من localStorage أو cookie
+    try {
+      const v = localStorage.getItem('user_id');
+      if (v && String(v).trim()) return String(v).trim();
+    } catch (e) { log('readUserId localStorage err', e); }
 
-  } catch (err) {
-    log('readUserId chrome err', err);
+    try {
+      const name = 'user_id';
+      const cookies = `; ${document.cookie || ''}`;
+      const parts = cookies.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    } catch (e) { log('readUserId cookie err', e); }
+
+    return null;
   }
 
-  // 🔹 احتياطي: نحاول من localStorage أو cookie
-  try {
-    const v = localStorage.getItem('user_id');
-    if (v && String(v).trim()) return String(v).trim();
-  } catch (e) { log('readUserId localStorage err', e); }
-
-  try {
-    const name = 'user_id';
-    const cookies = `; ${document.cookie || ''}`;
-    const parts = cookies.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-  } catch (e) { log('readUserId cookie err', e); }
-
-  return null;
-}
-
-/* ------------------------------------------------------------------
-   قراءة بيانات المستخدم كاملة (fullname, balance, membership)
------------------------------------------------------------------- */
-async function readUserProfile() {
-  try {
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      const res = await new Promise((resolve) => {
-        chrome.storage.local.get(['userData'], (r) => {
-          if (chrome.runtime?.lastError) return resolve(null);
-          resolve(r?.userData || null);
+  async function readUserProfile() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const res = await new Promise((resolve) => {
+          chrome.storage.local.get(['userData'], (r) => {
+            if (chrome.runtime?.lastError) return resolve(null);
+            resolve(r?.userData || null);
+          });
         });
-      });
-      if (res) return res;
+        if (res) return res;
+      }
+    } catch (e) {
+      log('readUserProfile err', e);
     }
-  } catch (e) {
-    log('readUserProfile err', e);
+    return null;
   }
-  return null;
-}
+
+  /* ======================================================
+     تهيئة صفحة العامل بعد تحميلها
+  ====================================================== */
+  async function initWorkerPage() {
+    log('⏳ Start_fixed.js loaded — بدء التحقق من المستخدم...');
+
+    const userId = await readUserId();
+
+    if (!userId) {
+      log('⚠️ لا يوجد user_id — المستخدم لم يسجّل بعد.');
+      alert('⚠️ الرجاء تسجيل الدخول أو إدخال user_id أولاً في الإضافة.');
+      return;
+    }
+
+    log('✅ تم العثور على user_id:', userId);
+
+    // 🔹 جلب بيانات المستخدم من السيرفر
+    try {
+      const response = await fetch(API_PROFILE + userId);
+      const data = await response.json();
+
+      if (data && data.username) {
+        log(`👤 المستخدم: ${data.username} | الرصيد: ${data.balance} | العضوية: ${data.membership}`);
+
+        // يمكنك هنا تحديث واجهة العامل مثلاً:
+        document.getElementById('username').textContent = data.username;
+        document.getElementById('balance').textContent = `${data.balance} نقاط`;
+        document.getElementById('membership').textContent = data.membership;
+      } else {
+        log('⚠️ لم يتم العثور على بيانات المستخدم في السيرفر.');
+      }
+    } catch (err) {
+      log('❌ خطأ أثناء جلب بيانات المستخدم من السيرفر:', err);
+    }
+  }
+
+  /* ======================================================
+     تشغيل الصفحة عند تحميلها
+  ====================================================== */
+  window.addEventListener('load', initWorkerPage);
+
+})();
+
   /* =========================================================
      توليد رابط مغلف عشوائي من المصادر (Facebook, Google, Instagram)
      هذا يسمح بتحويل الرابط الأصلي إلى رابط redirect "معقول".

@@ -663,6 +663,31 @@
       managePlaybackAndProgress(normalized);
     }, 2000);
   }
+/* ------------- أدوات إيقاف مؤقتات ومراقبين ------------- */
+const timers = new Set();
+const observers = [];
+let adObserver = null;
+
+function clearAllTimers() {
+  for (const id of Array.from(timers)) {
+    try {
+      clearTimeout(id);
+      clearInterval(id);
+    } catch (e) {}
+    timers.delete(id);
+  }
+}
+
+function disconnectObservers() {
+  for (const o of observers) {
+    try { o.disconnect && o.disconnect(); } catch (e) {}
+  }
+  observers.length = 0;
+  if (adObserver) {
+    try { adObserver.disconnect(); } catch (e) {}
+    adObserver = null;
+  }
+}
 
   /* ------------- دالة الإيقاف الكامل ------------- */
   function stopAllCompletely() {

@@ -723,10 +723,9 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
- /* ------------- بدء التشغيل (آمن) ------------- */
+/* ------------- بدء التشغيل (آمن) ------------- */
 function tryStartIfWorkerPageSafely() {
   try {
-    // تحقق أن الدوال الأساسية موجودة
     const ok = (typeof startIfWorkerPage === 'function')
             && (typeof safeTimeout === 'function' || typeof setTimeout === 'function')
             && (typeof injectProgressBar === 'function')
@@ -734,18 +733,16 @@ function tryStartIfWorkerPageSafely() {
 
     if (!ok) {
       // إذا لم تكن الدوال جاهزة بعد، أعد المحاولة بعد قليل
-      // نستخدم setTimeout عادي لأن safeTimeout ربما غير معرف في هذه النقطة
       setTimeout(tryStartIfWorkerPageSafely, 200);
       return;
     }
 
-    // استدعاء التشغيل داخل try/catch لالتقاط أي استثناء داخلي
     try {
       startIfWorkerPage();
       log('Start.js loaded — ready.');
     } catch (innerErr) {
       console.error('startIfWorkerPage threw:', innerErr);
-      // أعادة المحاولة مؤقتًا (حصرية للمحاولة الواحدة)
+      // إعادة المحاولة لمرة ثانية
       setTimeout(() => {
         try {
           startIfWorkerPage();
@@ -756,7 +753,6 @@ function tryStartIfWorkerPageSafely() {
       }, 500);
     }
   } catch (err) {
-    // خطأ عام في الفحص — أعد المحاولة بعد 300ms
     console.error('tryStartIfWorkerPageSafely error:', err);
     setTimeout(tryStartIfWorkerPageSafely, 300);
   }
@@ -768,3 +764,4 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 } else {
   window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
 }
+})();

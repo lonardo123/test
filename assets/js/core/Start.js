@@ -664,13 +664,35 @@ document.addEventListener('visibilitychange', () => {
 });
 
 
-/* ------------- مراقبة DOM لضمان بقاء الشريط ------------- */
+/* ------------- مراقبة DOM لضمان بقاء الشريط أثناء الفيديو فقط ------------- */
 const observer = new MutationObserver(() => {
-  if (!document.getElementById('trb-overlay')) {
-    log('⚠️ الشريط اختفى — إعادة إدخاله...');
-    injectProgressBar();
+  const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+  const bar = document.getElementById('trb-overlay');
+
+  if (isVideoPage) {
+    // إذا كنا في صفحة فيديو ولا يوجد الشريط، أضفه
+    if (!bar) {
+      log('⚠️ الشريط اختفى أثناء الفيديو — إعادة إدخاله...');
+      injectProgressBar();
+    }
+  } else {
+    // إذا لم نكن في صفحة فيديو، احذف الشريط نهائيًا
+    if (bar) {
+      log('ℹ️ المستخدم غادر صفحة الفيديو — إزالة الشريط.');
+      bar.remove();
+    }
   }
 });
+
 observer.observe(document.documentElement, { childList: true, subtree: true });
 
+/* ------------- إزالة الشريط عند إخفاء الصفحة أو الانتقال ------------- */
+document.addEventListener('visibilitychange', () => {
+  const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+  if (!isVideoPage && document.hidden) {
+    const bar = document.getElementById('trb-overlay');
+    if (bar) bar.remove();
+    stopAllCompletely();
+  }
+});
 })();

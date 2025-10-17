@@ -665,31 +665,6 @@ async function handleVideoPageIfNeeded() {
 }
 
 /* =========================================================
-   إدارة المؤقتات والمراقبين
-========================================================= */
-const timers = new Set();
-const observers = new Set();
-
-function safeTimeout(fn, delay) {
-  const id = setTimeout(() => {
-    timers.delete(id);
-    fn();
-  }, delay);
-  timers.add(id);
-  return id;
-}
-
-function clearAllTimers() {
-  for (const t of timers) clearTimeout(t);
-  timers.clear();
-}
-
-function disconnectObservers() {
-  for (const obs of observers) obs.disconnect();
-  observers.clear();
-}
-
-/* =========================================================
    دالة الإيقاف الكامل
 ========================================================= */
 function stopAllCompletely() {

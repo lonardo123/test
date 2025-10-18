@@ -28,7 +28,6 @@
   let adObserver = null;
   let currentAjaxData = null;   // بيانات الفيديو الحالية (AjaxData)
 
-  
   const log = (...a) => { try { console.log('[Start_fixed]', ...a); } catch (e) {} };
 
   /* ======================================================
@@ -37,7 +36,7 @@
   function safeTimeout(fn, ms) {
     const id = setTimeout(() => {
       timers.delete(id);
-      try { fn(); } catch (e) {}
+      try { fn(); } catch (e) { log('safeTimeout fn error', e); }
     }, ms);
     timers.add(id);
     return id;
@@ -58,7 +57,7 @@
 
   function disconnectObservers() {
     for (const o of observers) {
-      try { o.disconnect && o.disconnect(); } catch (e) {}
+      try { o && o.disconnect && o.disconnect(); } catch (e) {}
     }
     observers.clear();
     if (adObserver) {
@@ -68,9 +67,12 @@
   }
 
   /* ======================================================
-     قراءة user_id (تُحفظ محليًا فقط)
+     قراءة user_id (تُقرأ من chrome.storage.local أو localStorage أو cookie)
+     → إن وُجد من localStorage أو cookie نحفظه تلقائياً في chrome.storage.local
   ====================================================== */
   async function readUserId() {
+    let userId = null;
+
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
         const r = await new Promise((resolve) => {
@@ -83,33 +85,52 @@
       }
     } catch (e) { log('readUserId chrome err', e); }
 
+    // localStorage
     try {
       const v = localStorage.getItem('user_id');
-      if (v && String(v).trim()) return String(v).trim();
+      if (v && String(v).trim()) userId = String(v).trim();
     } catch (e) { log('readUserId localStorage err', e); }
 
-    try {
-      const name = 'user_id';
-      const cookies = `; ${document.cookie || ''}`;
-      const parts = cookies.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-    } catch (e) { log('readUserId cookie err', e); }
+    // cookie
+    if (!userId) {
+      try {
+        const name = 'user_id';
+        const cookies = `; ${document.cookie || ''}`;
+        const parts = cookies.split(`; ${name}=`);
+        if (parts.length === 2) userId = parts.pop().split(';').shift();
+      } catch (e) { log('readUserId cookie err', e); }
+    }
 
-    return null;
+    // حفظ تلقائي في chrome.storage.local (مفيد لتوافره في باقي أجزاء الإضافة)
+    if (userId) {
+      try {
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+          chrome.storage.local.set({ user_id: userId }, () => {
+            if (chrome.runtime?.lastError) log('save user_id error', chrome.runtime.lastError);
+            else log('user_id saved to chrome.storage.local');
+          });
+        } else {
+          // كنسخة احتياطية
+          localStorage.setItem('user_id', userId);
+        }
+      } catch (e) {
+        log('error saving user_id', e);
+      }
+    }
+
+    return userId;
   }
-  
+
   /* =========================================================
      توليد رابط مغلف عشوائي من المصادر (Facebook, Google, Instagram)
      هذا يسمح بتحويل الرابط الأصلي إلى رابط redirect "معقول".
      نستخدم normalizeYouTubeLink لتحويل أشكال الروابط المختلفة.
-     ========================================================= */
+  ========================================================= */
   function normalizeYouTubeLink(original) {
     try {
       if (!original) return original;
       let u = original.trim();
-      try {
-        u = u.replace(/&amp;/g, '&');
-      } catch (e) {}
+      try { u = u.replace(/&amp;/g, '&'); } catch (e) {}
       if (u.includes("youtube.com/shorts/")) {
         const videoId = u.split("/shorts/")[1].split(/[?#/]/)[0];
         return `https://www.youtube.com/watch?v=${videoId}`;
@@ -123,44 +144,7 @@
       return original;
     }
   }
-   /* ======================================================
-     تهيئة صفحة العامل وربطها ببيانات المستخدم
-  ====================================================== */
-  async function initWorkerPage() {
-    const API_PROFILE = `${MainUrl}/api/user/profile?user_id=`;
 
-    log('⏳ Start_fixed.js loaded — بدء التحقق من المستخدم...');
-    const userId = await readUserId();
-
-    if (!userId) {
-      log('⚠️ لا يوجد user_id — المستخدم لم يسجّل بعد.');
-      alert('⚠️ الرجاء تسجيل الدخول أو إدخال user_id أولاً في الإضافة.');
-      return;
-    }
-
-    log('✅ تم العثور على user_id:', userId);
-
-    try {
-      const response = await fetch(API_PROFILE + userId);
-      const data = await response.json();
-      if (data && data.username) {
-        log(`👤 المستخدم: ${data.username} | الرصيد: ${data.balance} | العضوية: ${data.membership}`);
-        const u = document.getElementById('username');
-        const b = document.getElementById('balance');
-        const m = document.getElementById('membership');
-        if (u) u.textContent = data.username;
-        if (b) b.textContent = `${data.balance} نقاط`;
-        if (m) m.textContent = data.membership;
-      } else {
-        log('⚠️ لم يتم العثور على بيانات المستخدم في السيرفر.');
-      }
-    } catch (err) {
-      log('❌ خطأ أثناء جلب بيانات المستخدم من السيرفر:', err);
-    }
-  }
-/* =========================================================
-     توليد رابط مغلف عشوائي
-  ========================================================= */
   function generate_wrapped_url(original_url) {
     try {
       const fixed_url = normalizeYouTubeLink(original_url);
@@ -226,13 +210,8 @@
 
   /* =========================================================
      شريط التقدم: مسؤول عن إنشاء الواجهة المرئية، تحديث النص والتقدم وإظهار إشعارات الدفع.
-     - ننتظر DOMContentLoaded إن لزم.
-     - نضيف الـ style داخل <head> أو <html> بأمان.
-     - نضيف العنصر داخل <body> إن كان متاحًا.
-     - z-index عالي لتجنب اختفاء الشريط خلف مشغلات الفيديو.
-     ========================================================= */
+  ========================================================= */
   function injectProgressBar() {
-    // تأكد من تحميل DOM
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', injectProgressBar, { once: true });
       return;
@@ -265,7 +244,6 @@
 #trb-pay-notice { text-align: center; margin-top: 6px; color: #d0ffd0; font-size: 13px; }
 `;
 
-    // create style
     const style = document.createElement('style');
     style.id = 'trb-style';
     style.textContent = css;
@@ -276,7 +254,6 @@
       try { document.documentElement.appendChild(style); } catch (ee) {}
     }
 
-    // create overlay DOM
     const overlay = document.createElement('div');
     overlay.id = 'trb-overlay';
     overlay.innerHTML = `
@@ -293,7 +270,6 @@
       try { document.documentElement.appendChild(overlay); } catch (ee) {}
     }
 
-    // header click => safety stop (user action to stop)
     const header = document.getElementById('trb-header');
     if (header) {
       header.addEventListener('click', () => {
@@ -303,14 +279,11 @@
     }
   }
 
-  /* ------------- دوال مساعدة لواجهة الشريط ------------- */
   function setBarMessage(msg) {
     try {
       const el = document.getElementById('trb-msg');
       if (el) el.textContent = msg;
-    } catch (e) {
-      console.error('setBarMessage error:', e);
-    }
+    } catch (e) { console.error('setBarMessage error:', e); }
   }
   function setBarProgress(percent) {
     try {
@@ -319,20 +292,15 @@
         const p = Math.max(0, Math.min(100, Number(percent) || 0));
         el.style.width = p + '%';
       }
-    } catch (e) {
-      console.error('setBarProgress error:', e);
-    }
+    } catch (e) { console.error('setBarProgress error:', e); }
   }
   function setBarPayNotice(msg) {
     try {
       const el = document.getElementById('trb-pay-notice');
       if (el) el.textContent = msg || '';
-    } catch (e) {
-      console.error('setBarPayNotice error:', e);
-    }
+    } catch (e) { console.error('setBarPayNotice error:', e); }
   }
 
-  /* ------------- محاولة تشغيل عنصر فيديو محلي إن وجد ------------- */
   function tryPlayVideoElement() {
     try {
       const v = document.querySelector('video');
@@ -346,7 +314,6 @@
     return null;
   }
 
-  /* ------------- إرسال callback للسيرفر عند الانتهاء من المشاهدة ------------- */
   async function sendCallback(userId, videoId, watchedSeconds) {
     const cbUrl = `${MainUrl.replace(/\/$/, '')}${CALLBACK_PATH}?user_id=${encodeURIComponent(userId)}&video_id=${encodeURIComponent(videoId)}&watched_seconds=${encodeURIComponent(watchedSeconds)}&secret=${encodeURIComponent(SECRET_KEY)}`;
     log('[Callback URL]', cbUrl);
@@ -366,39 +333,25 @@
     return false;
   }
 
-  /* ------------- مراقبة الإعلانات (لا نضغط عليها، نكتشف فقط) ------------- */
   function startAdSkipWatcher(onAdStart, onAdEnd) {
     let wasAdVisible = false;
     const check = () => {
       const adVisible = !!document.querySelector('.ad-showing, .ytp-ad-player-overlay, .video-ads, .jw-ad');
-      if (adVisible && !wasAdVisible) {
-        onAdStart();
-      } else if (!adVisible && wasAdVisible) {
-        onAdEnd();
-      }
+      if (adVisible && !wasAdVisible) onAdStart();
+      else if (!adVisible && wasAdVisible) onAdEnd();
       wasAdVisible = adVisible;
     };
     const intervalId = safeInterval(check, 1000);
     return () => { try { clearInterval(intervalId); timers.delete(intervalId); } catch(e){} };
   }
 
-  /* ------------- تمرير بشري بسيط لتقليل نمط الروبوت ------------- */
   function startHumanScroll() {
     const scrollInterval = safeInterval(() => {
-      if (Math.random() > 0.7) {
-        window.scrollBy(0, Math.random() > 0.5 ? 1 : -1);
-      }
+      if (Math.random() > 0.7) window.scrollBy(0, Math.random() > 0.5 ? 1 : -1);
     }, 3000);
     return () => { try { clearInterval(scrollInterval); timers.delete(scrollInterval); } catch(e){} };
   }
 
-  /* =========================================================
-     إدارة التشغيل والتتبع: هذه الدالة هي القلب عند تشغيل صفحة الفيديو.
-     - تعرض الشريط
-     - تبدأ محاولة تشغيل الفيديو إن كانت موجودة
-     - تراقب الإعلانات وتوقّف العد أثناءها
-     - بعد اكتمال requiredSeconds ترسل callback وتعود لجلب فيديو جديد
-     ========================================================= */
   async function managePlaybackAndProgress(ajaxData) {
     if (stopped) return;
     currentAjaxData = ajaxData || currentAjaxData || null;
@@ -415,30 +368,25 @@
     const videoId = ajaxData.video_id || ajaxData.id || ajaxData.videoId || 'unknown';
     const requiredSeconds = parseInt(ajaxData.duration || ajaxData.required_watch_seconds || 30, 10) || 30;
 
-    // تهيئة الشريط والواجهة
     injectProgressBar();
     setBarMessage('استمر فى مشاهدة هذا الفديو');
     setBarProgress(0);
     setBarPayNotice('');
 
-    // محاولة تشغيل الفيديو محلياً إن كان مشغل داخل نفس الصفحة
     const videoEl = tryPlayVideoElement();
 
-    // اعداد مراقبة الإعلانات (نغير الرسالة أثناء الإعلانات)
     if (adWatcherInterval) { try { clearInterval(adWatcherInterval); timers.delete(adWatcherInterval); } catch(e){} }
     const adStop = startAdSkipWatcher(
       () => setBarMessage('جارى التعامل مع الإعلان...'),
       () => setBarMessage('استمر فى مشاهدة هذا الفديو')
     );
 
-    // ابدأ تمرير بسيط "بشري"
     if (humanScrollStop) try { humanScrollStop(); } catch (e) {}
     humanScrollStop = startHumanScroll();
 
     let elapsed = 0;
     let callbackSent = false;
 
-    // مؤقت دوري لحساب الثواني والتعامل مع الحالة
     if (tickInterval) try { clearInterval(tickInterval); timers.delete(tickInterval); } catch (e) {}
     tickInterval = safeInterval(async () => {
       try {
@@ -459,7 +407,6 @@
           setBarMessage('متوقف مؤقتًا');
         }
 
-        // عند اكتمال المدة المطلوبة
         if (!callbackSent && elapsed >= requiredSeconds) {
           callbackSent = true;
           setBarMessage('جارٍ إرسال طلب الدفع...');
@@ -473,12 +420,10 @@
             setBarMessage('فشل في إرسال المكافأة');
           }
 
-          // تنظيف
           try { adStop(); } catch(e) {}
           try { if (humanScrollStop) humanScrollStop(); } catch(e){}
           try { clearInterval(tickInterval); timers.delete(tickInterval); } catch(e){}
 
-          // ابدأ دورة جديدة بعد تأخير بسيط
           safeTimeout(() => {
             setBarMessage('جارٍ البحث عن فيديو جديد للمشاهدة...');
             setBarProgress(0);
@@ -494,12 +439,6 @@
     }, 1000);
   }
 
-  /* =========================================================
-     جلب الفيديوهات من السيرفر:
-     - يتجاهل فيديوهات المالك
-     - يتجنب الفيديوهات التي شاهدتَها مؤخراً
-     - يخزن AjaxData في storage ثم يوجّه المستخدم إلى الرابط المغلف
-     ========================================================= */
   async function getVideoFlow() {
     if (!startGetVideo || stopped) return;
     startGetVideo = false;
@@ -514,7 +453,6 @@
         return;
       }
 
-      // جلب فيديوهات المستخدم (إن وُجد)
       let myVideos = [];
       try {
         const myUrl = `${MainUrl.replace(/\/$/, '')}${MY_VIDEOS_PATH}?user_id=${encodeURIComponent(userId)}`;
@@ -528,7 +466,6 @@
         }
       } catch (e) { log('myVideos fetch', e); }
 
-      // جلب قائمة الفيديوهات العامة
       const url = `${MainUrl.replace(/\/$/, '')}${PUBLIC_VIDEOS_PATH}`;
       const params = new URLSearchParams({ user_id: userId });
       try {
@@ -550,7 +487,6 @@
           return;
         }
 
-        // فلترة الفيديوهات: استبعاد فيديوهات المالك، واستبعاد التي شاهدناها حديثًا
         let filtered = data.filter(v => String(v.user_id) !== String(userId));
         if (myVideos.length) filtered = filtered.filter(v => !myVideos.includes(v.id || v.video_id));
         const checks = await Promise.all(filtered.map(async (v) => {
@@ -567,7 +503,6 @@
           return;
         }
 
-        // اختيار فيديو عشوائي من القائمة النهائية
         const chosen = finallyFiltered[Math.floor(Math.random() * finallyFiltered.length)];
         const cmd = {
           video_id: chosen.id || chosen.video_id || chosen.videoId || null,
@@ -576,7 +511,6 @@
           duration: (chosen.required_watch_seconds || chosen.duration || 30)
         };
 
-        // حفظ AjaxData في storage (لتستخدمها صفحة الفيديو لاحقًا)
         try {
           if (typeof chrome !== 'undefined' && chrome.storage?.local) {
             chrome.storage.local.set({ AjaxData: cmd }, () => {});
@@ -585,12 +519,10 @@
           }
         } catch (e) {}
 
-        // إن وُجد رابط ، نغلفه بمصدر عشوائي ثم نوجّه المستخدم إليه
         if (cmd.url) {
           const wrapped = generate_wrapped_url(cmd.url);
           safeTimeout(() => { try { window.location.href = wrapped; } catch (e) { log('redirect failed', e); } }, REDIRECT_DELAY_MS);
         } else {
-          // إن لم يكن هناك رابط نشغّل المعالجة مباشرةً (مفيد لو الصفحة نفسها تحتوي على المشغل)
           safeTimeout(() => handleApiResponse({ action: 'start', command: cmd }), 400);
         }
 
@@ -599,7 +531,6 @@
     } catch (e) { log('getVideoFlow err', e); startGetVideo = true; safeTimeout(getVideoFlow, 8000); }
   }
 
-  /* ------------- معالج الرد (احتياطي) ------------- */
   function handleApiResponse(resp) {
     try {
       if (!resp) { startGetVideo = true; safeTimeout(getVideoFlow, 3000); return; }
@@ -622,178 +553,188 @@
     } catch (e) { log('handleApiResponse err', e); startGetVideo = true; }
   }
 
-/* =========================================================
-   التعامل عند وجود AjaxData في صفحة الفيديو:
-   - تُقرأ AjaxData من storage
-   - تُحوَّل لقيم normalized وتُمرَّر للمتابعة
-========================================================= */
-async function handleVideoPageIfNeeded() {
-  let ajax = currentAjaxData;
-  if (!ajax) {
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-        ajax = await new Promise(res => chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null)));
-      } else {
-        ajax = JSON.parse(localStorage.getItem('AjaxData') || 'null');
-      }
-    } catch (e) { ajax = null; }
-  }
-
-  if (!ajax || !ajax.url) {
-    log("⚠️ لا توجد بيانات فيديو بعد.");
-    return;
-  }
-
-  setTimeout(() => {
-    log("▶️ بدء متابعة الفيديو الآن...");
-    const normalized = {
-      video_id: ajax.video_id || ajax.id || ajax.videoId,
-      duration: ajax.duration || ajax.required_watch_seconds || 30,
-      original_url: ajax.original_url || ajax.url || ajax.link
-    };
-    managePlaybackAndProgress(normalized);
-  }, 2000);
-}
-
-/* =========================================================
-   دالة الإيقاف الكامل
-========================================================= */
-function stopAllCompletely() {
-  try {
-    clearAllTimers();        // إيقاف كل التايمرات
-    disconnectObservers();   // فصل المراقبين
-    stopped = true;
-    alreadyStarted = false;
-    log('✅ stopAllCompletely: تم إيقاف جميع العمليات والمؤقتات بنجاح.');
-  } catch (e) {
-    console.error('stopAllCompletely error:', e);
-  }
-}
-
-/* =========================================================
-   التعامل مع الإغلاق والإنهاء
-========================================================= */
-window.addEventListener('beforeunload', stopAllCompletely, { capture: true });
-window.addEventListener('unload', stopAllCompletely);
-window.addEventListener('pagehide', stopAllCompletely);
-
-document.addEventListener('visibilitychange', () => {
-  const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
-  if (document.hidden && !isVideoPage) {
-    stopAllCompletely();
-  }
-});
-
-/* =========================================================
-   مراقبة DOM — إبقاء الشريط أثناء الفيديو فقط
-========================================================= */
-const observer = new MutationObserver(() => {
-  const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
-  const bar = document.getElementById('trb-overlay');
-
-  if (isVideoPage) {
-    if (!bar) {
-      log('⚠️ الشريط اختفى أثناء الفيديو — إعادة إدخاله...');
-      injectProgressBar();
+  async function handleVideoPageIfNeeded() {
+    let ajax = currentAjaxData;
+    if (!ajax) {
+      try {
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+          ajax = await new Promise(res => chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null)));
+        } else {
+          ajax = JSON.parse(localStorage.getItem('AjaxData') || 'null');
+        }
+      } catch (e) { ajax = null; }
     }
-  } else {
-    if (bar) {
-      log('ℹ️ المستخدم غادر صفحة الفيديو — إزالة الشريط.');
-      bar.remove();
-    }
-  }
-});
-observer.observe(document.documentElement, { childList: true, subtree: true });
-observers.add(observer);
 
-/* =========================================================
-   إزالة الشريط عند الانتقال من الفيديو
-========================================================= */
-document.addEventListener('visibilitychange', () => {
-  const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
-  if (!isVideoPage && document.hidden) {
-    const bar = document.getElementById('trb-overlay');
-    if (bar) bar.remove();
-    stopAllCompletely();
-  }
-});
-/* ------------- بدء التشغيل ------------- */
-function startIfWorkerPage() {
-  try {
-    if (alreadyStarted) return;
-    alreadyStarted = true;
-
-    const path = window.location.pathname || '';
-
-    // إذا كانت صفحة العامل /worker/start فنحضر الفيديوهات (ولا نكرر إدخال الشريط إن لم تريده هناك)
-    if (path === '/worker/start' || path.endsWith('/worker/start')) {
-      // تفعيل الشريط هنا إذا كنت تريد رؤيته في صفحة start
-      // injectProgressBar();            // ← فكّ التعليق إذا تريد الشريط في صفحة /worker/start
-      setBarMessage('جارٍ جلب فيديو للمشاهدة...');
-      safeTimeout(getVideoFlow, 600);
-    } else {
-      // في صفحات الفيديو: أدخِل الشريط وابدأ المتابعة
-      safeTimeout(() => {
-        injectProgressBar();
-        handleVideoPageIfNeeded();
-      }, 600);
-    }
-  } catch (e) {
-    console.error('startIfWorkerPage error:', e);
-    // إعادة الضبط حتى يمكن إعادة المحاولة لاحقًا
-    alreadyStarted = false;
-    safeTimeout(() => { tryStartIfWorkerPageSafely(); }, 400);
-  }
-}
-
-/* =========================================================
-   بدء التشغيل (آمن)
-========================================================= */
-function tryStartIfWorkerPageSafely() {
-  try {
-    const ok = (typeof startIfWorkerPage === 'function')
-            && (typeof safeTimeout === 'function' || typeof setTimeout === 'function')
-            && (typeof injectProgressBar === 'function')
-            && (typeof handleVideoPageIfNeeded === 'function');
-
-    if (!ok) {
-      setTimeout(tryStartIfWorkerPageSafely, 200);
+    if (!ajax || !ajax.url) {
+      log("⚠️ لا توجد بيانات فيديو بعد.");
       return;
     }
 
-    try {
-      startIfWorkerPage();
-      log('Start.js loaded — ready.');
-    } catch (innerErr) {
-      console.error('startIfWorkerPage threw:', innerErr);
-      setTimeout(() => {
-        try {
-          startIfWorkerPage();
-          log('Start.js loaded — ready. (retry)');
-        } catch (e) {
-          console.error('startIfWorkerPage retry failed:', e);
-        }
-      }, 500);
-    }
-  } catch (err) {
-    console.error('tryStartIfWorkerPageSafely error:', err);
-    setTimeout(tryStartIfWorkerPageSafely, 300);
+    setTimeout(() => {
+      log("▶️ بدء متابعة الفيديو الآن...");
+      const normalized = {
+        video_id: ajax.video_id || ajax.id || ajax.videoId,
+        duration: ajax.duration || ajax.required_watch_seconds || 30,
+        original_url: ajax.original_url || ajax.url || ajax.link
+      };
+      managePlaybackAndProgress(normalized);
+    }, 2000);
   }
-}
 
-/* ======================================================
-   التشغيل عند تحميل الصفحة لتهيئة بيانات المستخدم
-====================================================== */
-window.addEventListener('load', initWorkerPage);
+  function stopAllCompletely() {
+    try {
+      clearAllTimers();
+      disconnectObservers();
+      stopped = true;
+      alreadyStarted = false;
+      log('✅ stopAllCompletely: تم إيقاف جميع العمليات والمؤقتات بنجاح.');
+    } catch (e) {
+      console.error('stopAllCompletely error:', e);
+    }
+  }
 
+  window.addEventListener('beforeunload', stopAllCompletely, { capture: true });
+  window.addEventListener('unload', stopAllCompletely);
+  window.addEventListener('pagehide', stopAllCompletely);
+
+  document.addEventListener('visibilitychange', () => {
+    const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+    if (document.hidden && !isVideoPage) {
+      stopAllCompletely();
+    }
+  });
+
+  const observer = new MutationObserver(() => {
+    const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+    const bar = document.getElementById('trb-overlay');
+
+    if (isVideoPage) {
+      if (!bar) {
+        log('⚠️ الشريط اختفى أثناء الفيديو — إعادة إدخاله...');
+        injectProgressBar();
+      }
+    } else {
+      if (bar) {
+        log('ℹ️ المستخدم غادر صفحة الفيديو — إزالة الشريط.');
+        bar.remove();
+      }
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observers.add(observer);
+
+  document.addEventListener('visibilitychange', () => {
+    const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+    if (!isVideoPage && document.hidden) {
+      const bar = document.getElementById('trb-overlay');
+      if (bar) bar.remove();
+      stopAllCompletely();
+    }
+  });
+
+  function startIfWorkerPage() {
+    try {
+      if (alreadyStarted) return;
+      alreadyStarted = true;
+
+      const path = window.location.pathname || '';
+
+      if (path === '/worker/start' || path.endsWith('/worker/start')) {
+        // injectProgressBar(); // فكّ التعليق إن أردت الشريط في صفحة start
+        setBarMessage('جارٍ جلب فيديو للمشاهدة...');
+        safeTimeout(getVideoFlow, 600);
+      } else {
+        safeTimeout(() => {
+          injectProgressBar();
+          handleVideoPageIfNeeded();
+        }, 600);
+      }
+    } catch (e) {
+      console.error('startIfWorkerPage error:', e);
+      alreadyStarted = false;
+      safeTimeout(() => { tryStartIfWorkerPageSafely(); }, 400);
+    }
+  }
+
+  function tryStartIfWorkerPageSafely() {
+    try {
+      const ok = (typeof startIfWorkerPage === 'function')
+              && (typeof safeTimeout === 'function' || typeof setTimeout === 'function')
+              && (typeof injectProgressBar === 'function')
+              && (typeof handleVideoPageIfNeeded === 'function');
+
+      if (!ok) {
+        setTimeout(tryStartIfWorkerPageSafely, 200);
+        return;
+      }
+
+      try {
+        startIfWorkerPage();
+        log('Start.js loaded — ready.');
+      } catch (innerErr) {
+        console.error('startIfWorkerPage threw:', innerErr);
+        setTimeout(() => {
+          try {
+            startIfWorkerPage();
+            log('Start.js loaded — ready. (retry)');
+          } catch (e) {
+            console.error('startIfWorkerPage retry failed:', e);
+          }
+        }, 500);
+      }
+    } catch (err) {
+      console.error('tryStartIfWorkerPageSafely error:', err);
+      setTimeout(tryStartIfWorkerPageSafely, 300);
+    }
+  }
 /* ======================================================
-   تشغيل الصفحة عند التحميل الكامل لتفعيل نظام العامل
-====================================================== */
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  tryStartIfWorkerPageSafely();
-} else {
-  window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
-}
+     تهيئة صفحة العامل وربطها ببيانات المستخدم
+  ====================================================== */
+  async function initWorkerPage() {
+    const API_PROFILE = `${MainUrl}/api/user/profile?user_id=`;
+
+    log('⏳ Start_fixed.js loaded — بدء التحقق من المستخدم...');
+    const userId = await readUserId();
+
+    if (!userId) {
+      log('⚠️ لا يوجد user_id — المستخدم لم يسجّل بعد.');
+      alert('⚠️ الرجاء تسجيل الدخول أو إدخال user_id أولاً في الإضافة.');
+      return;
+    }
+
+    log('✅ تم العثور على user_id:', userId);
+
+    try {
+      const response = await fetch(API_PROFILE + userId);
+      const data = await response.json();
+      if (data && data.username) {
+        log(`👤 المستخدم: ${data.username} | الرصيد: ${data.balance} | العضوية: ${data.membership}`);
+        const u = document.getElementById('username');
+        const b = document.getElementById('balance');
+        const m = document.getElementById('membership');
+        if (u) u.textContent = data.username;
+        if (b) b.textContent = `${data.balance} نقاط`;
+        if (m) m.textContent = data.membership;
+      } else {
+        log('⚠️ لم يتم العثور على بيانات المستخدم في السيرفر.');
+      }
+    } catch (err) {
+      log('❌ خطأ أثناء جلب بيانات المستخدم من السيرفر:', err);
+    }
+  }
+
+  /* ======================================================
+     التشغيل عند تحميل الصفحة لتهيئة بيانات المستخدم
+  ====================================================== */
+  window.addEventListener('load', initWorkerPage);
+
+  /* ======================================================
+     تشغيل الصفحة عند التحميل الكامل لتفعيل نظام العامل
+  ====================================================== */
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    tryStartIfWorkerPageSafely();
+  } else {
+    window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
+  }
 
 })();
-

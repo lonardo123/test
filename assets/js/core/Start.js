@@ -140,23 +140,7 @@
 
     window.addEventListener('load', initWorkerPage);
   })();
-
-  // باقي الكود كما هو بدون حذف أي أسطر مع التأكد من أن:
-  // 1. safeTimeout موجود
-  // 2. safeInterval موجود
-  // 3. clearAllTimers موجود
-  // 4. disconnectObservers موجود
-  // 5. observer يضاف إلى observers
-  // 6. startIfWorkerPage و tryStartIfWorkerPageSafely تعمل بشكل آمن
-  // 7. injectProgressBar، handleVideoPageIfNeeded، managePlaybackAndProgress، getVideoFlow، handleApiResponse كلها معرفة قبل الاستخدام
-  // 8. جميع التايمرات والإشارات تستخدم safeTimeout أو safeInterval لتجنب ReferenceError
-  // 9. stopAllCompletely يغلق كل مؤقتات ويقطع المراقبين ويعيد ضبط المتغيرات
-
-  // بعد مراجعة كاملة، كل الدوال الآن مرتبطة وآمنة من الأخطاء ReferenceError
-  // الكود جاهز للتشغيل المباشر في الإضافة بدون توقف أو أخطاء مفقودة
-
-})();
-
+  
   /* =========================================================
      توليد رابط مغلف عشوائي من المصادر (Facebook, Google, Instagram)
      هذا يسمح بتحويل الرابط الأصلي إلى رابط redirect "معقول".

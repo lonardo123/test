@@ -21,7 +21,7 @@
   let stopped = false;          // حالة الإيقاف العام
   let alreadyStarted = false;   // لمنع التكرار في startIfWorkerPage
   const timers = new Set();     // نخزن مؤشرات التايمر حتى نتمكن من إلغائها
-  const observers = [];         // قائمة observers (إن وُجدت)
+  const observers = new Set();         // قائمة observers (إن وُجدت)
   let adWatcherInterval = null;
   let tickInterval = null;
   let humanScrollStop = null;

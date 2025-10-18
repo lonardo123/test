@@ -1,36 +1,6 @@
 'use strict';
 
 (function () {
- 
-  /* ------------- إعدادات عامة (يمكن تعديلها بسهولة) ------------- */
-  const MainUrl = "https://perceptive-victory-production.up.railway.app";
-  const PUBLIC_VIDEOS_PATH = "/api/public-videos";
-  const MY_VIDEOS_PATH = "/api/my-videos";
-  const CALLBACK_PATH = "/video-callback";
-  const SECRET_KEY = "MySuperSecretKey123ForCallbackOnly";
-
-  // ثوابت ضبط الأداء والمهلات
-  const NO_REPEAT_HOURS = 30;
-  const REDIRECT_DELAY_MS = 1200;
-  const FETCH_TIMEOUT_MS = 8000;
-  const CALLBACK_RETRY_DELAY_MS = 2000;
-  const CALLBACK_MAX_RETRIES = 2;
-
-  /* ------------- حالة داخلية ومراجع ------------- */
-  let startGetVideo = true;     // متى يبدأ طلب فيديو جديد
-  let stopped = false;          // حالة الإيقاف العام
-  let alreadyStarted = false;   // لمنع التكرار في startIfWorkerPage
-  const timers = new Set();     // نخزن مؤشرات التايمر حتى نتمكن من إلغائها
-  const observers = new Set();         // قائمة observers (إن وُجدت)
-  let adWatcherInterval = null;
-  let tickInterval = null;
-  let humanScrollStop = null;
-  let adObserver = null;
-  let currentAjaxData = null;   // بيانات الفيديو الحالية (AjaxData)
-
-'use strict';
-
-(function () {
 
   /* ------------- إعدادات عامة (يمكن تعديلها بسهولة) ------------- */
   const MainUrl = "https://perceptive-victory-production.up.railway.app";

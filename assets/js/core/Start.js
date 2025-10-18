@@ -841,11 +841,13 @@ function tryStartIfWorkerPageSafely() {
   }
 }
 
-// ⏳ بدء التشغيل عند التحميل الكامل
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  tryStartIfWorkerPageSafely();
-} else {
-  window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
-}
+  /* ======================================================
+     تشغيل الصفحة عند التحميل الكامل
+  ====================================================== */
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    tryStartIfWorkerPageSafely();
+  } else {
+    window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
+  }
 
-})(); // ← إغلاق الـ IIFE الرئيسي
+})(); // ← هذا هو القوس الوحيد المطلوب للإغلاق النهائي

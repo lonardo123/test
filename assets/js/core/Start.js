@@ -28,118 +28,75 @@
   let adObserver = null;
   let currentAjaxData = null;   // بيانات الفيديو الحالية (AjaxData)
 
-  /* =========================================================
-     دوال مؤقتات آمنة
-  ========================================================= */
-  function safeTimeout(fn, delay) {
-    const t = setTimeout(fn, delay);
-    timers.add(t);
-    return t;
+  
+  const log = (...a) => { try { console.log('[Start_fixed]', ...a); } catch (e) {} };
+
+  /* ======================================================
+     أدوات مؤقتات آمنة
+  ====================================================== */
+  function safeTimeout(fn, ms) {
+    const id = setTimeout(() => {
+      timers.delete(id);
+      try { fn(); } catch (e) {}
+    }, ms);
+    timers.add(id);
+    return id;
   }
 
-  function safeInterval(fn, delay) {
-    const t = setInterval(fn, delay);
-    timers.add(t);
-    return t;
+  function safeInterval(fn, ms) {
+    const id = setInterval(fn, ms);
+    timers.add(id);
+    return id;
   }
 
   function clearAllTimers() {
-    timers.forEach(t => {
-      try { clearTimeout(t); clearInterval(t); } catch(e){}
-    });
-    timers.clear();
+    for (const id of Array.from(timers)) {
+      try { clearTimeout(id); clearInterval(id); } catch (e) {}
+      timers.delete(id);
+    }
   }
 
   function disconnectObservers() {
-    observers.forEach(o => {
-      try { o.disconnect(); } catch(e){}
-    });
+    for (const o of observers) {
+      try { o.disconnect && o.disconnect(); } catch (e) {}
+    }
     observers.clear();
+    if (adObserver) {
+      try { adObserver.disconnect(); } catch (e) {}
+      adObserver = null;
+    }
   }
 
   /* ======================================================
-     TasksRewardBot - Start.js
-     تهيئة صفحة العامل وربطها ببيانات المستخدم
-  ======================================================= */
-
-  (async function() {
-    const API_BASE = MainUrl;
-    const API_PROFILE = `${API_BASE}/api/user/profile?user_id=`;
-
-    function log(...args) { console.log('[TasksRewardBot]', ...args); }
-
-    async function readUserId() {
-      try {
-        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          const localRes = await new Promise((resolve) => {
-            chrome.storage.local.get(['userData'], (res) => {
-              if (chrome.runtime?.lastError) return resolve(null);
-              resolve(res?.userData?.user_id || null);
-            });
-          });
-          if (localRes) return String(localRes).trim();
-        }
-        const syncRes = await new Promise((resolve) => {
-          chrome.storage.sync.get(['uniqueID'], (res) => {
+     قراءة user_id (تُحفظ محليًا فقط)
+  ====================================================== */
+  async function readUserId() {
+    try {
+      if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+        const r = await new Promise((resolve) => {
+          chrome.storage.local.get(['user_id'], (res) => {
             if (chrome.runtime?.lastError) return resolve(null);
-            resolve(res?.uniqueID || null);
+            resolve(res?.user_id ? String(res.user_id).trim() : null);
           });
         });
-        if (syncRes) return String(syncRes).trim();
-      } catch (err) { log('readUserId chrome err', err); }
-
-      try { const v = localStorage.getItem('user_id'); if (v) return String(v).trim(); } catch(e){log(e);}
-      try {
-        const name = 'user_id';
-        const cookies = `; ${document.cookie || ''}`;
-        const parts = cookies.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-      } catch(e){}
-      return null;
-    }
-
-    async function readUserProfile() {
-      try {
-        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-          const res = await new Promise((resolve) => {
-            chrome.storage.local.get(['userData'], (r) => {
-              if (chrome.runtime?.lastError) return resolve(null);
-              resolve(r?.userData || null);
-            });
-          });
-          if (res) return res;
-        }
-      } catch(e){log('readUserProfile err', e);}
-      return null;
-    }
-
-    async function initWorkerPage() {
-      log('⏳ Start_fixed.js loaded — بدء التحقق من المستخدم...');
-      const userId = await readUserId();
-      if (!userId) {
-        log('⚠️ لا يوجد user_id — المستخدم لم يسجّل بعد.');
-        alert('⚠️ الرجاء تسجيل الدخول أو إدخال user_id أولاً في الإضافة.');
-        return;
+        if (r) return r;
       }
-      log('✅ تم العثور على user_id:', userId);
+    } catch (e) { log('readUserId chrome err', e); }
 
-      try {
-        const response = await fetch(API_PROFILE + userId);
-        const data = await response.json();
-        if (data && data.username) {
-          log(`👤 المستخدم: ${data.username} | الرصيد: ${data.balance} | العضوية: ${data.membership}`);
-          const u = document.getElementById('username');
-          const b = document.getElementById('balance');
-          const m = document.getElementById('membership');
-          if(u) u.textContent = data.username;
-          if(b) b.textContent = `${data.balance} نقاط`;
-          if(m) m.textContent = data.membership;
-        } else { log('⚠️ لم يتم العثور على بيانات المستخدم في السيرفر.'); }
-      } catch(err){log('❌ خطأ أثناء جلب بيانات المستخدم من السيرفر:', err);}
-    }
+    try {
+      const v = localStorage.getItem('user_id');
+      if (v && String(v).trim()) return String(v).trim();
+    } catch (e) { log('readUserId localStorage err', e); }
 
-    window.addEventListener('load', initWorkerPage);
-  })();
+    try {
+      const name = 'user_id';
+      const cookies = `; ${document.cookie || ''}`;
+      const parts = cookies.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+    } catch (e) { log('readUserId cookie err', e); }
+
+    return null;
+  }
   
   /* =========================================================
      توليد رابط مغلف عشوائي من المصادر (Facebook, Google, Instagram)
@@ -166,7 +123,44 @@
       return original;
     }
   }
+   /* ======================================================
+     تهيئة صفحة العامل وربطها ببيانات المستخدم
+  ====================================================== */
+  async function initWorkerPage() {
+    const API_PROFILE = `${MainUrl}/api/user/profile?user_id=`;
 
+    log('⏳ Start_fixed.js loaded — بدء التحقق من المستخدم...');
+    const userId = await readUserId();
+
+    if (!userId) {
+      log('⚠️ لا يوجد user_id — المستخدم لم يسجّل بعد.');
+      alert('⚠️ الرجاء تسجيل الدخول أو إدخال user_id أولاً في الإضافة.');
+      return;
+    }
+
+    log('✅ تم العثور على user_id:', userId);
+
+    try {
+      const response = await fetch(API_PROFILE + userId);
+      const data = await response.json();
+      if (data && data.username) {
+        log(`👤 المستخدم: ${data.username} | الرصيد: ${data.balance} | العضوية: ${data.membership}`);
+        const u = document.getElementById('username');
+        const b = document.getElementById('balance');
+        const m = document.getElementById('membership');
+        if (u) u.textContent = data.username;
+        if (b) b.textContent = `${data.balance} نقاط`;
+        if (m) m.textContent = data.membership;
+      } else {
+        log('⚠️ لم يتم العثور على بيانات المستخدم في السيرفر.');
+      }
+    } catch (err) {
+      log('❌ خطأ أثناء جلب بيانات المستخدم من السيرفر:', err);
+    }
+  }
+/* =========================================================
+     توليد رابط مغلف عشوائي
+  ========================================================= */
   function generate_wrapped_url(original_url) {
     try {
       const fixed_url = normalizeYouTubeLink(original_url);
@@ -787,13 +781,19 @@ function tryStartIfWorkerPageSafely() {
   }
 }
 
-  /* ======================================================
-     تشغيل الصفحة عند التحميل الكامل
-  ====================================================== */
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    tryStartIfWorkerPageSafely();
-  } else {
-    window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
-  }
+/* ======================================================
+   التشغيل عند تحميل الصفحة لتهيئة بيانات المستخدم
+====================================================== */
+window.addEventListener('load', initWorkerPage);
 
-})(); // ← هذا هو القوس الوحيد المطلوب للإغلاق النهائي
+/* ======================================================
+   تشغيل الصفحة عند التحميل الكامل لتفعيل نظام العامل
+====================================================== */
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  tryStartIfWorkerPageSafely();
+} else {
+  window.addEventListener('load', tryStartIfWorkerPageSafely, { once: true });
+}
+
+})();
+

@@ -151,9 +151,16 @@ $(document).ready(function () {
         $btn.prop("disabled", true).text("جارٍ التحميل...");
 
         // حفظ user_id في chrome.storage.sync
-        chrome.storage.sync.set({ uniqueID: uid }, function () {
-            // جلب من السيرفر
-            fetchProfileFromServer(uid, function (payload) {
+chrome.storage.sync.set({ uniqueID: uid }, function () {
+
+    // ✅ إضافة تخزين متوافق مع Start.js
+    chrome.storage.local.set({ user_id: uid }, function () {
+        try { localStorage.setItem('user_id', uid); } catch (e) {}
+    });
+
+    // جلب من السيرفر
+    fetchProfileFromServer(uid, function (payload) {
+
                 // بناء كائن المستخدم للحفظ محليًا مع last_update
                 var nowIso = new Date().toISOString().slice(0, 16).replace("T", " ");
                 var userData = {

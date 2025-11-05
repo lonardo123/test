@@ -1,5 +1,11 @@
 'use strict';
-
+// ✅ إضافة هذا في بداية الملف بعد المتغيرات
+console.log('[TRB] 🔍 فحص اتصال الخلفية...');
+if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+  console.log('[TRB] ✅ اتصال الخلفية متاح');
+} else {
+  console.log('[TRB] ❌ اتصال الخلفية غير متاح');
+}
 (function () {
   /* ------------- إعدادات عامة (قابلة للتعديل) ------------- */
   const MainUrl = "https://perceptive-victory-production.up.railway.app";
@@ -1494,22 +1500,32 @@ async function getVideoFlow() {
     const userId = await readUserId();
     if (!userId) {
       log('getVideoFlow: no user_id, retry shortly');
-      setBarMessage('لم يتم العثور على user_id — تأكد من تسجيل الدخول');
+      setBarMessage('لم يتم العثور على user_id');
       hideLoadingScreen();
       startGetVideo = true;
       safeTimeout(getVideoFlow, 3000);
       return;
     }
 
-    // طلب الفيديوهات من الخلفية
+    console.log('[TRB] 📡 جاري طلب الفيديوهات من الخلفية...');
+    
+    // ✅ طلب الفيديوهات من الخلفية
     const videoData = await new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { cmd: "getVideos", userId },
-        (response) => resolve(response)
-      );
+      if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+        chrome.runtime.sendMessage(
+          { cmd: "getVideos", userId },
+          (response) => {
+            console.log('[TRB] 📡 استجابة الخلفية:', response);
+            resolve(response || {});
+          }
+        );
+      } else {
+        resolve({});
+      }
     });
 
     if (!videoData?.success) {
+      console.error('[TRB] ❌ فشل جلب الفيديوهات:', videoData);
       setBarMessage('فشل جلب الفيديوهات من الخلفية');
       hideLoadingScreen();
       startGetVideo = true;
@@ -1630,7 +1646,7 @@ if (
     }
 
   } catch (e) {
-    log('getVideoFlow err', e);
+    console.error('[TRB] ❌ getVideoFlow error:', e);
     setBarMessage('خطأ في جلب الفيديوهات');
     hideLoadingScreen();
     startGetVideo = true;
@@ -1674,62 +1690,50 @@ if (
    🧠 handleVideoPageIfNeeded (نسخة كاملة + تشغيل الفيديو + مراقبة الإعلانات)
    ========================================================= */
 async function handleVideoPageIfNeeded() {
+  console.log('[TRB] 🎬 handleVideoPageIfNeeded called');
+  
   let ajax = currentAjaxData;
 
-  // 🟢 محاولة جلب بيانات الفيديو من التخزين إذا لم تكن جاهزة
+  // 🟢 محاولة جلب بيانات الفيديو من التخزين
   if (!ajax) {
     try {
       if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-        ajax = await new Promise(res => chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null)));
+        ajax = await new Promise(res => 
+          chrome.storage.local.get(['AjaxData'], r => res(r?.AjaxData || null))
+        );
+        console.log('[TRB] 📦 AjaxData from chrome.storage:', ajax);
       } else {
-        ajax = JSON.parse(localStorage.getItem('AjaxData') || 'null');
+        const stored = localStorage.getItem('AjaxData');
+        ajax = stored ? JSON.parse(stored) : null;
+        console.log('[TRB] 📦 AjaxData from localStorage:', ajax);
       }
     } catch (e) {
+      console.error('[TRB] ❌ Error loading AjaxData:', e);
       ajax = null;
     }
   }
 
-  if (!ajax || !ajax.url) {
-    log("⚠️ لا توجد بيانات فيديو بعد.");
+  if (!ajax || !ajax.video_id) {
+    console.log('[TRB] ⚠️ لا توجد بيانات فيديو — جلب فيديو جديد');
+    setBarMessage('⚠️ لا توجد بيانات فيديو — جاري الجلب...');
+    startGetVideo = true;
+    safeTimeout(getVideoFlow, 2000);
     return;
   }
 
-  // 🎯 بعد 2 ثانية يبدأ التنفيذ الفعلي
+  // 🎯 بدء متابعة الفيديو
+  console.log('[TRB] ▶️ بدء متابعة الفيديو:', ajax.video_id);
+  setBarMessage('جاري تهيئة مشغل الفيديو...');
+  
   safeTimeout(() => {
-    log("▶️ بدء متابعة الفيديو الآن...");
-
     const normalized = {
-      video_id: ajax.video_id || ajax.id || ajax.videoId,
-      duration_seconds: ajax.duration_seconds || ajax.duration || ajax.required_watch_seconds,
-      original_url: ajax.original_url || ajax.url || ajax.link
+      video_id: ajax.video_id || ajax.id,
+      duration_seconds: ajax.duration_seconds || ajax.duration,
+      original_url: ajax.original_url || ajax.url
     };
 
-    // ✅ حقن شريط التقدم (Progress Bar)
-    injectProgressBar();
-
-    // ✅ تشغيل الفيديو فورًا
-    const video = tryPlayVideoElement();
-
-    // ✅ تفعيل مراقبة الإعلانات عند بداية الفيديو
-    const adStop = startAdWatcher(
-      () => {
-        // عند بداية الإعلان
-        setBarMessage('📺 جاري التعامل مع الإعلان...');
-      },
-      () => {
-        // عند نهاية الإعلان
-        setBarMessage('✅ تم تخطي الإعلان — استئناف المشاهدة...');
-      }
-    );
-
-    // ✅ بدء متابعة التقدم ومراقبة الفيديو
+    // ✅ بدء إدارة التشغيل
     managePlaybackAndProgress(normalized);
-
-    // ⚙️ حماية إضافية: عند مغادرة الصفحة أو إغلاقها نوقف المراقب
-    window.addEventListener('beforeunload', () => {
-      try { adStop?.(); } catch { }
-    });
-
   }, 2000);
 }
 
@@ -1853,29 +1857,20 @@ function stopAllCompletely() {
   }
 
   /* ------------- مراقبة تغييرات الصفحة ------------- */
- function setupPageObserver() {
+function setupPageObserver() {
   const observer = new MutationObserver(() => {
-    const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+    const isVideoPage = /\/watch/.test(window.location.pathname);
     const isChannelPage = /\/channel\/|\/@/.test(window.location.pathname);
-    const isWorkerPage = window.location.href.includes("/worker/start") || 
-                        window.location.pathname.includes("/worker/start");
     const bar = document.getElementById('trb-overlay');
     
-    // ✅ لا نزيل الشريط في صفحة العامل
-    if (isWorkerPage) {
+    // ✅ فقط في صفحات الفيديو أو القناة نحتفظ بالشريط
+    if (isVideoPage || isChannelPage) {
       if (!bar) {
-        log('🔄 إعادة إدخال الشريط في صفحة العامل...');
+        log('🔄 إعادة إدخال الشريط في صفحة الفيديو/القناة...');
         injectProgressBar();
-        setBarMessage('جارٍ جلب فيديو للمشاهدة...');
       }
-    }
-    else if (isVideoPage || isChannelPage) {
-      if (!bar) {
-        log('⚠️ الشريط اختفى — إعادة إدخاله...');
-        injectProgressBar();
-        setBarMessage(isChannelPage ? 'جاري التفاعل مع القناة...' : 'استمر في مشاهدة هذا الفيديو');
-      }
-    } else if (bar && !isWorkerPage) { // ✅ التأكد من عدم إزالته في worker page
+    } else if (bar) {
+      // ❌ لا نزيل الشريط أبداً في صفحات الفيديو
       log('ℹ️ المستخدم غادر صفحة الفيديو/القناة — إزالة الشريط.');
       removeProgressBar();
     }
@@ -1921,26 +1916,29 @@ function stopAllCompletely() {
   })();
 
   /* ------------- بدء العامل ------------- */
- function startIfWorkerPage() {
+function startIfWorkerPage() {
   try {
     if (alreadyStarted) return;
     alreadyStarted = true;
     
     const isWorkerPage = window.location.href.includes("/worker/start") || 
                         window.location.pathname.includes("/worker/start");
+    const isVideoPage = /\/watch/.test(window.location.pathname);
     
-    console.log(`[TRB] startIfWorkerPage: ${isWorkerPage}, URL: ${window.location.href}`);
+    console.log(`[TRB] startIfWorkerPage: isWorker=${isWorkerPage}, isVideo=${isVideoPage}, URL: ${window.location.href}`);
     
     if (isWorkerPage) {
       injectProgressBar();
       setBarMessage('جارٍ جلب فيديو للمشاهدة...');
-      safeTimeout(getVideoFlow, 1000); // ✅ زيادة التأخير قليلاً
-    } else {
+      safeTimeout(getVideoFlow, 1000);
+    } else if (isVideoPage) {
+      // ✅ بدء التشغيل في صفحات الفيديو مباشرة
+      injectProgressBar();
+      setBarMessage('جاري تحميل بيانات الفيديو...');
       safeTimeout(() => {
-        injectProgressBar();
         handleVideoPageIfNeeded();
         checkChannelMode();
-      }, 600);
+      }, 1500);
     }
   } catch (e) {
     console.error('startIfWorkerPage error:', e);
@@ -2128,4 +2126,5 @@ window.addEventListener('message', (ev) => {
 });
 
 })();
+
 

@@ -16,7 +16,7 @@
   const CALLBACK_MAX_RETRIES = 2; // الحد الأقصى لمحاولات الدفع
 
   /* ------------- حالة داخلية ومراجع ------------- */
-  let startGetVideo = false; // متى يبدأ طلب فيديو جديد
+  let startGetVideo = true; // متى يبدأ طلب فيديو جديد
   let stopped = false; // حالة الإيقاف العام
   let alreadyStarted = false; // لمنع التكرار في startIfWorkerPage
   const timers = new Set(); // تخزين مؤشرات التايمر
@@ -146,12 +146,19 @@ async function tryUseExternalModulesAndStart() {
      🧍‍♂️ السلوك البشري والتحكم في العمل
   ============================================================ */
 
- // ✅ تمييز وضع التشغيل: هل نحن في تبويب العامل أم في صفحة محتوى (مثل youtube)
-const IS_WORKER_PAGE = window.location.href.includes("/worker/start");
-console.log(`[TRB] Start.js loaded — IS_WORKER_PAGE=${IS_WORKER_PAGE}`);
+// ✅ التصحيح الكامل للكود:
+const IS_WORKER_PAGE = window.location.href.includes("/worker/start") || 
+                       window.location.pathname.includes("/worker/start");
+console.log(`[TRB] Start.js loaded — IS_WORKER_PAGE=${IS_WORKER_PAGE}, URL: ${window.location.href}, Path: ${window.location.pathname}`);
 
 if (IS_WORKER_PAGE) {
   log("[TRB] Active in worker/start tab (full worker mode)");
+  // ✅ بدء التشغيل الفوري في صفحة العامل
+  safeTimeout(() => {
+    injectProgressBar();
+    setBarMessage('جارٍ جلب فيديو للمشاهدة...');
+    getVideoFlow();
+  }, 1000);
 } else {
   // لا نُنهي التنفيذ هنا — نحتاج أن يبقى الملف مسجلاً ليستقبل أوامر من الخلفية
   log("[TRB] Running in content mode (will respond to messages like StartWorker / StartGetData)");
@@ -521,16 +528,20 @@ function injectProgressBar() {
   window.__trbObserverActive = true;
 
   // 🔒 مراقبة إزالة الشريط فقط (وليس تغييرات الفيديوهات)
-  const guard = new MutationObserver(() => {
-    const stillThere = document.getElementById('trb-overlay');
-    if (!stillThere) {
-      console.warn('[TRB] ⚠️ الشريط اختفى — سيتم إدخاله مجددًا بعد لحظات...');
-      window.__trbObserverActive = false;
-      window.__trbProgressBarInjected = false;
-      setTimeout(() => injectProgressBar(), 1500);
-      guard.disconnect();
-    }
-  });
+const guard = new MutationObserver(() => {
+  const stillThere = document.getElementById('trb-overlay');
+  const isWorkerPage = window.location.href.includes("/worker/start") || 
+                      window.location.pathname.includes("/worker/start");
+  
+  // ✅ لا نعيد الحقن في صفحة العامل إذا تمت الإزالة
+  if (!stillThere && !isWorkerPage) {
+    console.warn('[TRB] ⚠️ الشريط اختفى — سيتم إدخاله مجددًا بعد لحظات...');
+    window.__trbObserverActive = false;
+    window.__trbProgressBarInjected = false;
+    setTimeout(() => injectProgressBar(), 1500);
+    guard.disconnect();
+  }
+});
 
   guard.observe(document.body || document.documentElement, {
     childList: true,
@@ -1842,25 +1853,36 @@ function stopAllCompletely() {
   }
 
   /* ------------- مراقبة تغييرات الصفحة ------------- */
-  function setupPageObserver() {
-    const observer = new MutationObserver(() => {
-      const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
-      const isChannelPage = /\/channel\/|\/@/.test(window.location.pathname);
-      const bar = document.getElementById('trb-overlay');
-      if (isVideoPage || isChannelPage) {
-        if (!bar) {
-          log('⚠️ الشريط اختفى — إعادة إدخاله...');
-          injectProgressBar();
-          setBarMessage(isChannelPage ? 'جاري التفاعل مع القناة...' : 'استمر في مشاهدة هذا الفيديو');
-        }
-      } else if (bar) {
-        log('ℹ️ المستخدم غادر صفحة الفيديو/القناة — إزالة الشريط.');
-        removeProgressBar();
+ function setupPageObserver() {
+  const observer = new MutationObserver(() => {
+    const isVideoPage = /\/video\/|\/watch/.test(window.location.pathname);
+    const isChannelPage = /\/channel\/|\/@/.test(window.location.pathname);
+    const isWorkerPage = window.location.href.includes("/worker/start") || 
+                        window.location.pathname.includes("/worker/start");
+    const bar = document.getElementById('trb-overlay');
+    
+    // ✅ لا نزيل الشريط في صفحة العامل
+    if (isWorkerPage) {
+      if (!bar) {
+        log('🔄 إعادة إدخال الشريط في صفحة العامل...');
+        injectProgressBar();
+        setBarMessage('جارٍ جلب فيديو للمشاهدة...');
       }
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    observers.add(observer);
-  }
+    }
+    else if (isVideoPage || isChannelPage) {
+      if (!bar) {
+        log('⚠️ الشريط اختفى — إعادة إدخاله...');
+        injectProgressBar();
+        setBarMessage(isChannelPage ? 'جاري التفاعل مع القناة...' : 'استمر في مشاهدة هذا الفيديو');
+      }
+    } else if (bar && !isWorkerPage) { // ✅ التأكد من عدم إزالته في worker page
+      log('ℹ️ المستخدم غادر صفحة الفيديو/القناة — إزالة الشريط.');
+      removeProgressBar();
+    }
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observers.add(observer);
+}
  // مراقبة تغييرات workerActive من الخلفية
   if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -1899,28 +1921,33 @@ function stopAllCompletely() {
   })();
 
   /* ------------- بدء العامل ------------- */
-  function startIfWorkerPage() {
-    try {
-      if (alreadyStarted) return;
-      alreadyStarted = true;
-      const path = window.location.pathname || '';
-      if (path === '/worker/start' || path.endsWith('/worker/start')) {
+ function startIfWorkerPage() {
+  try {
+    if (alreadyStarted) return;
+    alreadyStarted = true;
+    
+    const isWorkerPage = window.location.href.includes("/worker/start") || 
+                        window.location.pathname.includes("/worker/start");
+    
+    console.log(`[TRB] startIfWorkerPage: ${isWorkerPage}, URL: ${window.location.href}`);
+    
+    if (isWorkerPage) {
+      injectProgressBar();
+      setBarMessage('جارٍ جلب فيديو للمشاهدة...');
+      safeTimeout(getVideoFlow, 1000); // ✅ زيادة التأخير قليلاً
+    } else {
+      safeTimeout(() => {
         injectProgressBar();
-        setBarMessage('جارٍ جلب فيديو للمشاهدة...');
-        safeTimeout(getVideoFlow, 600);
-      } else {
-        safeTimeout(() => {
-          injectProgressBar();
-          handleVideoPageIfNeeded();
-          checkChannelMode();
-        }, 600);
-      }
-    } catch (e) {
-      console.error('startIfWorkerPage error:', e);
-      alreadyStarted = false;
-      safeTimeout(() => { tryStartIfWorkerPageSafely(); }, 400);
+        handleVideoPageIfNeeded();
+        checkChannelMode();
+      }, 600);
     }
+  } catch (e) {
+    console.error('startIfWorkerPage error:', e);
+    alreadyStarted = false;
+    safeTimeout(() => { tryStartIfWorkerPageSafely(); }, 1000);
   }
+}
 
   function tryStartIfWorkerPageSafely() {
     try {
@@ -2101,3 +2128,4 @@ window.addEventListener('message', (ev) => {
 });
 
 })();
+

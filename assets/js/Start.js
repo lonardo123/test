@@ -604,61 +604,203 @@ const guard = new MutationObserver(() => {
 async function ensurePlay() {
   try {
     const video = document.querySelector('video');
-    if (!video) return;
-
-    if (video.paused || video.readyState < 2) {
-      console.log('[TRB] ▶️ محاولة تشغيل الفيديو تلقائيًا...');
-      await video.play().catch(() => {
-        const evt = new MouseEvent('click', { bubbles: true, cancelable: true });
-        video.dispatchEvent(evt);
-      });
+    if (!video) {
+      console.log('[TRB] ⚠️ لم يتم العثور على عنصر فيديو - البحث العميق...');
+      
+      // 🔍 البحث العميق عن الفيديو
+      const deepVideo = document.querySelector('#movie_player video, ytd-watch-flexy video, .html5-video-player video');
+      if (deepVideo) {
+        console.log('[TRB] ✅ تم العثور على فيديو بالبحث العميق');
+        return await playVideoElement(deepVideo);
+      }
+      return;
     }
+
+    console.log('[TRB] ▶️ محاولة تشغيل الفيديو تلقائيًا...', {
+      paused: video.paused,
+      readyState: video.readyState,
+      currentTime: video.currentTime,
+      duration: video.duration,
+      src: video.src?.substring(0, 100)
+    });
+
+    return await playVideoElement(video);
   } catch (err) {
-    console.warn('[TRB] ⚠️ خطأ أثناء محاولة التشغيل:', err);
+    console.error('[TRB] ❌ خطأ أثناء محاولة التشغيل:', err);
   }
 }
 
-// شغّل الفيديو عند انتهاء الإعلان أو عند عودة الصفحة من السكون
-window.addEventListener('message', (e) => {
-  if (e?.data?.type === 'ad_long_timeout') {
-    console.log('[TRB] 🧩 تلقى إشارة إعادة التشغيل بعد إعلان طويل.');
-    ensurePlay();
-  }
-});
-
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) ensurePlay();
-});
-
-  /* ------------- تشغيل الفيديو وتخطي الإعلانات ------------- */
-  function tryPlayVideoElement() {
-    if (!document.body) {
-      log('tryPlayVideoElement: DOM not ready');
-      return null;
+// 🎯 دالة تشغيل الفيديو المنفصلة
+async function playVideoElement(video) {
+  try {
+    // 🔄 إعادة تعيين الوقت إذا كان في النهاية
+    if (video.ended || (video.duration > 0 && video.currentTime >= (video.duration - 5))) {
+      try {
+        video.currentTime = 0;
+        console.log('[TRB] 🔄 إعادة تعيين وقت الفيديو إلى البداية');
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (e) {}
     }
+
+    // 🎯 محاولة التشغيل المباشرة
+    if (video.paused || video.ended) {
+      try {
+        await video.play();
+        console.log('[TRB] ✅ تم تشغيل الفيديو بنجاح مباشرة');
+        return true;
+      } catch (error) {
+        console.warn('[TRB] ⚠️ فشل التشغيل المباشر:', error.message);
+        
+        // 🔄 محاولة بإزالة السماحيات
+        try {
+          video.muted = true;
+          await video.play();
+          console.log('[TRB] ✅ تم التشغيل بعد كتم الصوت');
+          video.muted = false;
+          return true;
+        } catch (muteError) {
+          console.warn('[TRB] ⚠️ فشل التشغيل مع كتم الصوت:', muteError.message);
+        }
+
+        // 🎯 محاولة النقر على أزرار التشغيل
+        return await clickPlayButtons();
+      }
+    } else {
+      console.log('[TRB] ✅ الفيديو يعمل بالفعل');
+      return true;
+    }
+  } catch (err) {
+    console.error('[TRB] ❌ خطأ في playVideoElement:', err);
+    return false;
+  }
+  return false;
+}
+
+// 🎯 دالة النقر على أزرار التشغيل
+async function clickPlayButtons() {
+  try {
+    const playSelectors = [
+      'button.ytp-play-button',
+      '.ytp-large-play-button',
+      '.ytp-play-button.ytp-button',
+      '[aria-label*="play" i]',
+      '[title*="play" i]',
+      '[data-title-no-tooltip*="play" i]',
+      '.html5-video-player .ytp-play-button'
+    ];
+
+    for (const selector of playSelectors) {
+      const playButton = document.querySelector(selector);
+      if (playButton) {
+        console.log(`[TRB] 🎯 النقر على زر التشغيل: ${selector}`);
+        playButton.click();
+        
+        // تأكيد التشغيل بعد النقر
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const video = document.querySelector('video');
+        if (video && !video.paused) {
+          console.log('[TRB] ✅ تم التشغيل بنجاح بعد النقر على الزر');
+          return true;
+        }
+      }
+    }
+
+    // 🔄 محاولة باستخدام الأحداث
     try {
       const video = document.querySelector('video');
       if (video) {
-        video.play().catch(() => {
-          try {
-            document.querySelector('button.ytp-play-button, .play-button, .jw-icon-play')?.click();
-          } catch (e) {
-            log('Error clicking play button:', e);
-          }
-        });
-        log('Video playback started');
-        return video;
+        video.dispatchEvent(new Event('play'));
+        video.dispatchEvent(new Event('click'));
+        console.log('[TRB] 🔄 تم إرسال أحداث التشغيل');
       }
-      const playBtn = document.querySelector('button.ytp-play-button, .play-button, .jw-icon-play');
-      if (playBtn) {
-        playBtn.click();
-        log('Clicked play button');
-      }
-    } catch (e) {
-      log('tryPlayVideoElement error:', e);
-    }
+    } catch (e) {}
+
+    console.log('[TRB] ⚠️ لم يتم العثور على أزرار تشغيل مناسبة');
+    return false;
+  } catch (error) {
+    console.error('[TRB] ❌ خطأ في clickPlayButtons:', error);
+    return false;
+  }
+}
+
+  /* ------------- تشغيل الفيديو وتخطي الإعلانات ------------- */
+ function tryPlayVideoElement() {
+  if (!document.body) {
+    log('tryPlayVideoElement: DOM not ready');
     return null;
   }
+  
+  try {
+    // 🔍 البحث الشامل عن الفيديو
+    const videoSelectors = [
+      'video',
+      '#movie_player video',
+      'ytd-watch-flexy video', 
+      '.html5-video-player video',
+      '.video-stream',
+      '.html5-main-video'
+    ];
+    
+    let video = null;
+    for (const selector of videoSelectors) {
+      video = document.querySelector(selector);
+      if (video) {
+        console.log('[TRB] ✅ تم العثور على فيديو باستخدام:', selector);
+        break;
+      }
+    }
+
+    if (video) {
+      console.log('[TRB] 🎬 العثور على فيديو - جاري التشغيل...', {
+        paused: video.paused,
+        readyState: video.readyState,
+        currentTime: video.currentTime,
+        duration: video.duration,
+        tagName: video.tagName,
+        className: video.className
+      });
+      
+      // ✅ تشغيل مباشر مع معالجة متقدمة للأخطاء
+      video.play().then(() => {
+        console.log('[TRB] ✅ تشغيل الفيديو ناجح مباشرة');
+      }).catch(error => {
+        console.warn('[TRB] ⚠️ خطأ في التشغيل التلقائي:', error.message);
+        
+        // 🔄 محاولات متعددة
+        setTimeout(() => {
+          video.play().catch(() => {
+            // 🎯 محاولة النقر على الأزرار
+            clickPlayButtons();
+          });
+        }, 1000);
+      });
+      
+      log('Video playback started');
+      return video;
+    } else {
+      console.log('[TRB] ⚠️ لم يتم العثور على عنصر فيديو في الصفحة');
+      
+      // 🔍 البحث المتأخر
+      setTimeout(() => {
+        const delayedVideo = document.querySelector('video');
+        if (delayedVideo) {
+          console.log('[TRB] ✅ تم العثور على فيديو متأخر - جاري التشغيل');
+          delayedVideo.play().catch(() => {});
+        } else {
+          console.log('[TRB] 🔍 البحث عن أزرار التشغيل...');
+          clickPlayButtons();
+        }
+      }, 3000);
+    }
+    
+    // 🎯 البحث عن أزرار التشغيل أيضًا
+    clickPlayButtons();
+    
+  } catch (e) {
+    log('tryPlayVideoElement error:', e);
+  }
+  return null;
+}
 /* =========================================================
    ✅ startAdWatcher (Final Clean & Safe Version)
    ========================================================= */
@@ -807,7 +949,7 @@ function startAdWatcher(onAdStart, onAdEnd) {
   function handleAdEnd() {
   if (!wasAdVisible) return;
   
-  console.log('[AdWatcher] ✅ الإعلان انتهى.');
+  console.log('[TRB] ✅ الإعلان انتهى - تشغيل الفيديو الأصلي بقوة...');
   wasAdVisible = false;
   skipAttempts = 0;
   window.__trbAdPlaying = false;
@@ -817,34 +959,22 @@ function startAdWatcher(onAdStart, onAdEnd) {
     hardForceTimeout = null;
   }
 
-  // 🟢 تشغيل الفيديو الأصلي فوراً بعد الإعلان
-  setTimeout(() => {
+  // 🟢 تشغيل الفيديو الأصلي فوراً بعد الإعلان بقوة
+  safeTimeout(() => {
     try { 
       onAdEnd?.(); 
     } catch (_) {}
 
-    // ✅ إصلاح الشاشة السوداء وتشغيل الفيديو الأصلي
-    try {
-      const video = document.querySelector('video');
-      if (video) {
-        console.log('[AdWatcher] ▶️ محاولة تشغيل الفيديو الأصلي بعد الإعلان...');
-        
-        // إذا كان الفيديو متوقفاً أو لم يبدأ
-        if (video.paused || video.readyState < 2) {
-          video.play().catch(err => {
-            console.warn('[AdWatcher] فشل التشغيل الأولي، إعادة المحاولة...', err);
-            // محاولة ثانية بعد تأخير قصير
-            setTimeout(() => {
-              try { 
-                video.play().catch(() => {}); 
-              } catch (_) {}
-            }, 500);
-          });
-        }
-      }
-    } catch (e) {
-      console.error('[AdWatcher] خطأ في تشغيل الفيديو بعد الإعلان:', e);
-    }
+    console.log('[TRB] 🎬 بدء سلسلة تشغيل الفيديو بعد الإعلان...');
+    
+    // ✅ سلسلة تشغيل قوية
+    ensurePlay();
+    safeTimeout(() => ensurePlay(), 500);
+    safeTimeout(() => ensurePlay(), 1000);
+    safeTimeout(() => ensurePlay(), 2000);
+    safeTimeout(() => clickPlayButtons(), 1500);
+    
+    console.log('[TRB] ✅ تم تشغيل الفيديو بعد الإعلان');
   }, 300);
 }
 
@@ -1102,8 +1232,44 @@ async function managePlaybackAndProgress(ajaxData) {
   setBarPayNotice('');
   setBarMessage(`استمر في مشاهدة هذا الفيديو (0/${requiredSeconds})`);
 
-  // ✅ تشغيل الفيديو فوراً
+  // ✅ تشغيل الفيديو فوراً بقوة
+  console.log('[TRB] 🎬 بدء تشغيل الفيديو بقوة...');
+  
+  let playAttempts = 0;
+  const maxPlayAttempts = 5;
+  
+  const forcePlayVideo = async () => {
+    if (playAttempts >= maxPlayAttempts) {
+      console.log('[TRB] ⚠️ توقفت محاولات التشغيل بعد', maxPlayAttempts, 'محاولات');
+      return;
+    }
+    
+    playAttempts++;
+    console.log(`[TRB] 🔄 محاولة تشغيل ${playAttempts}/${maxPlayAttempts}`);
+    
+    const success = await ensurePlay();
+    if (!success) {
+      // 🔄 إعادة المحاولة بعد تأخير
+      setTimeout(forcePlayVideo, 2000);
+    } else {
+      console.log('[TRB] ✅ تم تشغيل الفيديو بنجاح في المحاولة', playAttempts);
+    }
+  };
+
+  // بدء التشغيل الفوري
+  forcePlayVideo();
+  
+  // ✅ أيضًا تشغيل باستخدام الدالة الأصلية
   const videoEl = tryPlayVideoElement();
+  
+  // ✅ مراقبة مستمرة للتشغيل
+  const playWatcher = safeInterval(() => {
+    const currentVideo = document.querySelector('video');
+    if (currentVideo && (currentVideo.paused || currentVideo.ended)) {
+      console.log('[TRB] 🔄 المراقب: الفيديو متوقف - إعادة التشغيل');
+      ensurePlay();
+    }
+  }, 3000);
 
   // ✅ بدء مراقبة الإعلانات
   const adStop = startAdWatcher(
@@ -1118,22 +1284,14 @@ async function managePlaybackAndProgress(ajaxData) {
   // 🛑 دالة توقف شاملة لجميع الأنشطة
   // =====================================================
   function stopPlaybackTimers() {
-    try { if (tickInterval) { clearInterval(tickInterval); timers.delete(tickInterval); tickInterval = null; } } catch {}
+    try { 
+      if (tickInterval) { clearInterval(tickInterval); timers.delete(tickInterval); tickInterval = null; } 
+      if (playWatcher) { clearInterval(playWatcher); timers.delete(playWatcher); }
+    } catch {}
     try { if (adStop) adStop(); } catch {}
     try { if (humanScrollStop) { humanScrollStop(); humanScrollStop = null; } } catch {}
   }
-
-  async function ensurePlay() {
-    if (videoEl) {
-      try {
-        if (videoEl.ended || (typeof videoEl.currentTime === 'number' && typeof videoEl.duration === 'number' && videoEl.currentTime >= (videoEl.duration - 0.5))) {
-          try { videoEl.currentTime = 0; } catch {}
-        }
-        await videoEl.play().catch(() => {});
-      } catch {}
-    }
-  }
-
+}
 // =====================================================
 // 🎯 المؤقت الرئيسي (tickInterval)
 // =====================================================
@@ -2111,19 +2269,102 @@ try {
   console.error('[TRB] fixObserver init error:', e);
 }
 
-// =========================================================
-// 🧩 استقبال إشارات داخلية من background لإصلاح الشاشة
-// =========================================================
-window.addEventListener('message', (ev) => {
-  try {
-    const d = ev.data;
-    if (d && d.TRB_INTERNAL && d.type === 'ad_long_timeout') {
-      safeTimeout(() => fixBlackScreenAfterAd(), 300);
+  // =========================================================
+  // 🧩 استقبال إشارات داخلية من background لإصلاح الشاشة
+  // =========================================================
+  window.addEventListener('message', (ev) => {
+    try {
+      const d = ev.data;
+      if (d && d.TRB_INTERNAL && d.type === 'ad_long_timeout') {
+        safeTimeout(() => fixBlackScreenAfterAd(), 300);
+      }
+    } catch (e) {
+      /* تجاهل الأخطاء */
     }
-  } catch (e) {
-    /* تجاهل الأخطاء */
+  });
+
+  // =========================================================
+  // 🎬 نظام مراقبة وتشغيل الفيديو المتقدم
+  // =========================================================
+  function setupAdvancedVideoMonitor() {
+    console.log('[TRB] 🎬 إعداد المراقبة المتقدمة للفيديو...');
+    
+    let videoPlayEnsured = false;
+    
+    // ✅ مراقبة ظهور الفيديو
+    const videoObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1) {
+            // 🔍 البحث عن فيديو مباشر أو في العناصر المضافة
+            if (node.tagName === 'VIDEO' || node.querySelector?.('video')) {
+              console.log('[TRB] ✅ تم اكتشاف فيديو جديد في الـDOM');
+              if (!videoPlayEnsured) {
+                videoPlayEnsured = true;
+                safeTimeout(() => {
+                  ensurePlay();
+                  // 🔄 تأكيد التشغيل بعد 3 ثواني
+                  safeTimeout(ensurePlay, 3000);
+                }, 1500);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    videoObserver.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // ✅ مراقبة حالة الفيديو باستمرار
+    const stateChecker = safeInterval(() => {
+      const video = document.querySelector('video');
+      if (video) {
+        if (video.paused || video.ended) {
+          console.log('[TRB] 🔄 المراقب: الفيديو متوقف - إعادة التشغيل', {
+            paused: video.paused,
+            ended: video.ended,
+            currentTime: video.currentTime
+          });
+          ensurePlay();
+        }
+      } else {
+        // 🔍 إذا لم يكن هناك فيديو، نبحث عن أزرار التشغيل
+        clickPlayButtons();
+      }
+    }, 4000);
+
+    // ✅ مراقبة تغييرات الصفحة (لـ YouTube SPA)
+    let lastUrl = location.href;
+    const urlObserver = new MutationObserver(() => {
+      if (location.href !== lastUrl) {
+        lastUrl = location.href;
+        console.log('[TRB] 🔄 تغيير عنوان URL - إعادة تشغيل الفيديو');
+        videoPlayEnsured = false;
+        safeTimeout(() => {
+          ensurePlay();
+          clickPlayButtons();
+        }, 2000);
+      }
+    });
+    
+    urlObserver.observe(document, { subtree: true, childList: true });
+
+    return () => {
+      videoObserver.disconnect();
+      urlObserver.disconnect();
+      clearInterval(stateChecker);
+    };
   }
-});
+
+  // ✅ بدء المراقبة المتقدمة
+  let videoMonitorStop = null;
+  safeTimeout(() => {
+    videoMonitorStop = setupAdvancedVideoMonitor();
+    console.log('[TRB] 🎬 نظام مراقبة الفيديو المتقدم يعمل');
+  }, 1000);
 
 })();
 
